@@ -7,7 +7,16 @@ resources:
 - crd
 - webhook # Disable this if you're not using the webhook functionality.
 - default
-- github.com/metal3-io/baremetal-operator/deploy/bmo-capm3/?ref=test-all-furkat
+- github.com/Nordix/baremetal-operator/deploy/kustomizations/bmo/?ref=bmo-furkat
+
+configMapGenerator:
+- behavior: merge
+  literals:
+  - DEPLOY_KERNEL_URL=${DEPLOY_KERNEL_URL}
+  - DEPLOY_RAMDISK_URL=${DEPLOY_RAMDISK_URL}
+  - IRONIC_ENDPOINT=${IRONIC_URL}
+  - IRONIC_INSPECTOR_ENDPOINT=${IRONIC_INSPECTOR_URL}
+  name: ironic-bmo-configmap
 
 patchesJson6902:
 - target: # NOTE: This patch needs to be repeatd for EACH CustomResourceDefinition you have under crd/bases.
