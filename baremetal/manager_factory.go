@@ -37,6 +37,9 @@ type ManagerFactoryInterface interface {
 	NewDataManager(*capm3.Metal3Data, logr.Logger) (
 		DataManagerInterface, error,
 	)
+	NewRemediationManager(*capm3.Metal3Remediation, *capm3.Metal3Machine, *capi.Machine, logr.Logger) (
+		RemediationManagerInterface, error,
+	)
 }
 
 // ManagerFactory only contains a client
@@ -71,4 +74,9 @@ func (f ManagerFactory) NewDataTemplateManager(metadata *capm3.Metal3DataTemplat
 // NewDataManager creates a new DataManager
 func (f ManagerFactory) NewDataManager(metadata *capm3.Metal3Data, metadataLog logr.Logger) (DataManagerInterface, error) {
 	return NewDataManager(f.client, metadata, metadataLog)
+}
+
+// NewRemediationManager creates a new RemediationManager
+func (f ManagerFactory) NewRemediationManager(remediation *capm3.Metal3Remediation, metal3machine *capm3.Metal3Machine, machine *capi.Machine, remediationLog logr.Logger) (RemediationManagerInterface, error) {
+	return NewRemediationManager(f.client, remediation, metal3machine, machine, remediationLog)
 }
