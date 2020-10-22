@@ -1,0 +1,56 @@
+== Cluster API Provider for Managed Bare Metal Hardware
+
+https://jenkins.nordix.org/view/Airship/job/airship_master_v1a3_integration_test_ubuntu[image:https://jenkins.nordix.org/view/Airship/job/airship_master_v1a3_integration_test_ubuntu/badge/icon?subject=Ubuntu%20E2E%20V1alpha3[Ubuntu
+V1alpha3 build status]]
+https://jenkins.nordix.org/view/Airship/job/airship_master_v1a3_integration_test_centos[image:https://jenkins.nordix.org/view/Airship/job/airship_master_v1a3_integration_test_centos/badge/icon?subject=CentOS%20E2E%20V1alpha3[CentOS
+V1alpha3 build status]]
+
+This repository contains a Machine actuator implementation for the
+Kubernetes https://github.com/kubernetes-sigs/cluster-api/[Cluster API].
+
+For more information about this actuator and related repositories, see
+http://metal3.io/[metal3.io].
+
+=== Compatibility with Cluster API
+
+[cols=",,",options="header",]
+|===
+|CAPM3 version |Cluster API version |CAPM3 Release
+|v1alpha2 |v1alpha2 |v0.2.X
+|v1alpha3 |v1alpha3 |v0.3.X
+|v1alpha4 |v1alpha3 |v0.4.X
+|===
+
+You can find information on how to use this provider with Cluster API
+and clusterctl in the link:docs/getting-started.md[getting-started].
+
+=== Deploying the metal3 provider
+
+The recommended method is using
+https://master.cluster-api.sigs.k8s.io/clusterctl/overview.html[Clusterctl].
+Please refer to the link:docs/getting-started.md[getting-started] for
+the pre-requisites.
+
+=== Development Environment
+
+There are multiple ways to setup a development environment:
+
+* link:docs/dev-setup.md#tilt-development-environment[Using Tilt]
+* link:docs/dev-setup.md#development-using-Kind-or-Minikube[Other
+management cluster]
+* See https://github.com/metal3-io/metal3-dev-env[metal3-dev-env] for an
+end-to-end development and test environment for
+`cluster-api-provider-metal3` and
+https://github.com/metal3-io/baremetal-operator[baremetal-operator].
+
+=== API
+
+See the link:docs/api.md[API Documentation] for details about the
+objects used with this `cluster-api` provider. You can also see the
+link:docs/deployment_workflow.md[cluster deployment workflow] for the
+outline of the deployment process.
+
+=== Architecture
+
+The architecture with the components involved is documented
+link:docs/architecture.md[here]
