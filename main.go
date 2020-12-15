@@ -297,8 +297,12 @@ func setupWebhooks(mgr ctrl.Manager) {
 		os.Exit(1)
 	}
 
-	// if err := (&infrav1.Metal3Remediation{}).SetupWebhookWithManager(mgr); err != nil {
-	// 	setupLog.Error(err, "unable to create webhook", "webhook", "Metal3Remediation")
-	// 	os.Exit(1)
-	// }
+	if err := (&infrav1.Metal3Remediation{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Metal3Remediation")
+		os.Exit(1)
+	}
+	if err := (&infrav1.Metal3RemediationTemplate{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Metal3RemediationTemplate")
+		os.Exit(1)
+	}
 }
