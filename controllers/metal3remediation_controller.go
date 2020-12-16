@@ -182,10 +182,13 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 			if okToStop {
 				// If machine is still unhealthy delete after last remediation attempt, delete unhealthy machine.
 				remediationMgr.SetRemediationPhase(capm3.PhaseDeleting)
-				remediationMgr.DeleteCapiMachine(ctx)
+				err := remediationMgr.DeleteCapiMachine(ctx)
+				if err != nil {
+					return ctrl.Result{}, errors.Wrapf(err, "unable to delete the Machine")
+				}
 
 				// Remediation failed set unhealthy annotation on BMH
-				err := remediationMgr.SetAnnotation(ctx, "unhealthy")
+				err = remediationMgr.SetAnnotation(ctx, "unhealthy")
 				if err != nil {
 					return ctrl.Result{}, errors.Wrapf(err, "error setting unhealthy annotation")
 				}

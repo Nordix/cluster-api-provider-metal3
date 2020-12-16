@@ -58,7 +58,7 @@ type RemediationManagerInterface interface {
 	HasReachRetryLimit() bool
 	GetTimeout() *metav1.Duration
 	IncreaseRetryCount()
-	DeleteCapiMachine(ctx context.Context)
+	DeleteCapiMachine(ctx context.Context) error
 }
 
 // RemediationManager is responsible for performing remediation reconciliation
@@ -268,19 +268,22 @@ func (r *RemediationManager) IncreaseRetryCount() {
 	r.Metal3Remediation.Status.RetryCount++
 }
 
-func (r *RemediationManager) DeleteCapiMachine(ctx context.Context) {
+func (r *RemediationManager) DeleteCapiMachine(ctx context.Context) error {
 	machine, err := r.getCapiMachineRef(ctx)
 
 	if err != nil {
 		r.Log.Info("Unable to retrive the CAPI machine")
+		return err
 	}
 
 	if machine.GetDeletionTimestamp() == nil {
 		// Issue a delete for remediation request.
 		if err := r.Client.Delete(ctx, machine); err != nil && !apierrors.IsNotFound(err) {
 			r.Log.Error(err, "failed to delete %v %q for Machine %q", machine.GroupVersionKind(), machine.GetName(), r.Machine.Name)
+			return err
 		}
 	}
+	return nil
 }
 
 // getExternalRemediationRequest gets reference to External Remediation Request, unstructured object.

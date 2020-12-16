@@ -274,9 +274,11 @@ func (mr *MockRemediationManagerInterfaceMockRecorder) IncreaseRetryCount() *gom
 }
 
 // DeleteCapiMachine mocks base method
-func (m *MockRemediationManagerInterface) DeleteCapiMachine(ctx context.Context) {
+func (m *MockRemediationManagerInterface) DeleteCapiMachine(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteCapiMachine", ctx)
+	ret := m.ctrl.Call(m, "DeleteCapiMachine", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // DeleteCapiMachine indicates an expected call of DeleteCapiMachine
