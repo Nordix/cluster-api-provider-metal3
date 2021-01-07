@@ -472,6 +472,11 @@ spec:
                     description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                     type: string
                 type: object
+              disableAutomatedClean:
+                default: false
+                description: DisableAutomatedClean indicates whether disk cleaning
+                  should be enabled/disabled for a node during provisioning & deprovisioning.
+                type: boolean
               hostSelector:
                 description: HostSelector specifies matching criteria for labels on
                   BareMetalHosts. This is used to limit the set of BareMetalHost objects
@@ -604,6 +609,10 @@ spec:
                   - type
                   type: object
                 type: array
+              disableAutomatedClean:
+                description: DisableAutomatedClean indicates whether disk cleaning
+                  is enabled/disabled for a node.
+                type: boolean
               failureMessage:
                 description: "FailureMessage will be set in the event that there is
                   a terminal problem reconciling the metal3machine and will contain
@@ -727,6 +736,8 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+            required:
+            - disableAutomatedClean
             type: object
         type: object
     served: true

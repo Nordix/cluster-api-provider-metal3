@@ -63,6 +63,12 @@ type Metal3MachineSpec struct {
 	// NetworkData is an object storing the reference to the secret containing the
 	// network data given by the user.
 	NetworkData *corev1.SecretReference `json:"networkData,omitempty"`
+
+	// DisableAutomatedClean indicates whether disk cleaning should be enabled/disabled
+	// for a node during provisioning & deprovisioning.
+	// +kubebuilder:default=false
+	// +optional
+	DisableAutomatedClean bool `json:"disableAutomatedClean,omitempty"`
 }
 
 // IsValid returns an error if the object is not valid, otherwise nil. The
@@ -159,6 +165,10 @@ type Metal3MachineStatus struct {
 	// NetworkData is an object storing the reference to the secret containing the
 	// network data used to deploy the BareMetalHost.
 	NetworkData *corev1.SecretReference `json:"networkData,omitempty"`
+
+	// DisableAutomatedClean indicates whether disk cleaning is enabled/disabled
+	// for a node.
+	DisableAutomatedClean bool `json:"disableAutomatedClean"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

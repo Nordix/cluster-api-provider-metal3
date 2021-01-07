@@ -23,6 +23,19 @@ import (
 // Metal3MachineTemplateSpec defines the desired state of Metal3MachineTemplate
 type Metal3MachineTemplateSpec struct {
 	Template Metal3MachineTemplateResource `json:"template"`
+
+	// DisableAutomatedClean indicates whether disk cleaning should be enabled/disabled
+	// for a node during provisioning & deprovisioning.
+	// +kubebuilder:default=false
+	// +optional
+	DisableAutomatedClean bool `json:"disableAutomatedClean,omitempty"`
+}
+
+// Metal3MachineTemplateStatus defines the observed state of Metal3MachineTemplate
+type Metal3MachineTemplateStatus struct {
+	// DisableAutomatedClean indicates whether disk cleaning should be enabled/disabled
+	// for a node during provisioning & deprovisioning.
+	DisableAutomatedClean bool `json:"disableAutomatedClean,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -35,7 +48,8 @@ type Metal3MachineTemplate struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec Metal3MachineTemplateSpec `json:"spec,omitempty"`
+	Spec   Metal3MachineTemplateSpec   `json:"spec,omitempty"`
+	Status Metal3MachineTemplateStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
