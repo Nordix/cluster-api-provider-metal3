@@ -18,12 +18,13 @@ package v1alpha2
 
 import (
 	"fmt"
+	"net/url"
+	"strconv"
+
 	"github.com/metal3-io/cluster-api-provider-metal3/api/v1alpha4"
 	apiconversion "k8s.io/apimachinery/pkg/conversion"
-	"net/url"
 	utilconversion "sigs.k8s.io/cluster-api/util/conversion"
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
-	"strconv"
 )
 
 //Constant variables
@@ -80,6 +81,7 @@ func (src *Metal3Machine) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.NetworkData = restored.Spec.NetworkData
 	dst.Spec.Image = restored.Spec.Image
 	dst.Spec.DataTemplate = restored.Spec.DataTemplate
+	dst.Spec.DisableAutomatedClean = restored.Spec.DisableAutomatedClean
 	dst.Status.UserData = restored.Status.UserData
 	dst.Status.MetaData = restored.Status.MetaData
 	dst.Status.NetworkData = restored.Status.NetworkData
@@ -130,6 +132,7 @@ func (src *Metal3MachineTemplate) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Template.Spec.NetworkData = restored.Spec.Template.Spec.NetworkData
 	dst.Spec.Template.Spec.DataTemplate = restored.Spec.Template.Spec.DataTemplate
 	dst.Spec.Template.Spec.Image = restored.Spec.Template.Spec.Image
+	dst.Spec.Template.Spec.DisableAutomatedClean = restored.Spec.Template.Spec.DisableAutomatedClean
 
 	return nil
 }

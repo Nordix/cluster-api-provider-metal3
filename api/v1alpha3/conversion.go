@@ -64,6 +64,7 @@ func (src *Metal3Machine) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.NetworkData = restored.Spec.NetworkData
 	dst.Spec.DataTemplate = restored.Spec.DataTemplate
 	dst.Spec.Image = restored.Spec.Image
+	dst.Spec.DisableAutomatedClean = restored.Spec.DisableAutomatedClean
 	dst.Status.UserData = restored.Status.UserData
 	dst.Status.MetaData = restored.Status.MetaData
 	dst.Status.NetworkData = restored.Status.NetworkData
@@ -112,6 +113,7 @@ func (src *Metal3MachineTemplate) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Template.Spec.NetworkData = restored.Spec.Template.Spec.NetworkData
 	dst.Spec.Template.Spec.DataTemplate = restored.Spec.Template.Spec.DataTemplate
 	dst.Spec.Template.Spec.Image = restored.Spec.Template.Spec.Image
+	dst.Spec.Template.Spec.DisableAutomatedClean = restored.Spec.Template.Spec.DisableAutomatedClean
 
 	return nil
 }

@@ -320,6 +320,11 @@ spec:
                             description: 'UID of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids'
                             type: string
                         type: object
+                      disableAutomatedClean:
+                        default: false
+                        description: When set to True, DisableAutomatedClean disables
+                          Ironic disk cleaning during provisioning and deprovisioning.
+                        type: boolean
                       hostSelector:
                         description: HostSelector specifies matching criteria for
                           labels on BareMetalHosts. This is used to limit the set

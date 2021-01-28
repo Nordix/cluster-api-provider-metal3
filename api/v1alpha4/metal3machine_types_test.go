@@ -148,6 +148,20 @@ func TestSpecIsValid(t *testing.T) {
 			ErrorExpected: false,
 			Name:          "HostSelector Multiple MatchLabels provided",
 		},
+		// {
+		// 	Spec: Metal3MachineSpec{
+		// 		DisableAutomatedClean: false,
+		// 	},
+		// 	ErrorExpected: false,
+		// 	Name:          "Expected bool, got bool for DisableAutomatedClean",
+		// },
+		// {
+		// 	Spec: Metal3MachineSpec{
+		// 		DisableAutomatedClean: true,
+		// 	},
+		// 	ErrorExpected: false,
+		// 	Name:          "Expected bool, got bool for DisableAutomatedClean",
+		// },
 	}
 
 	for _, tc := range cases {
