@@ -95,18 +95,32 @@ func (mr *MockRemediationManagerInterfaceMockRecorder) TimeToRemediate(timeout i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TimeToRemediate", reflect.TypeOf((*MockRemediationManagerInterface)(nil).TimeToRemediate), timeout)
 }
 
-// SetAnnotation mocks base method
-func (m *MockRemediationManagerInterface) SetAnnotation(ctx context.Context, annotation string) error {
+// SetRebootAnnotation mocks base method
+func (m *MockRemediationManagerInterface) SetRebootAnnotation(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetAnnotation", ctx, annotation)
+	ret := m.ctrl.Call(m, "SetRebootAnnotation", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SetAnnotation indicates an expected call of SetAnnotation
-func (mr *MockRemediationManagerInterfaceMockRecorder) SetAnnotation(ctx, annotation interface{}) *gomock.Call {
+// SetRebootAnnotation indicates an expected call of SetRebootAnnotation
+func (mr *MockRemediationManagerInterfaceMockRecorder) SetRebootAnnotation(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetAnnotation", reflect.TypeOf((*MockRemediationManagerInterface)(nil).SetAnnotation), ctx, annotation)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetRebootAnnotation", reflect.TypeOf((*MockRemediationManagerInterface)(nil).SetRebootAnnotation), ctx)
+}
+
+// SetUnhealthyAnnotation mocks base method
+func (m *MockRemediationManagerInterface) SetUnhealthyAnnotation(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetUnhealthyAnnotation", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetUnhealthyAnnotation indicates an expected call of SetUnhealthyAnnotation
+func (mr *MockRemediationManagerInterfaceMockRecorder) SetUnhealthyAnnotation(ctx interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetUnhealthyAnnotation", reflect.TypeOf((*MockRemediationManagerInterface)(nil).SetUnhealthyAnnotation), ctx)
 }
 
 // GetUnhealthyHost mocks base method
@@ -123,20 +137,6 @@ func (m *MockRemediationManagerInterface) GetUnhealthyHost(ctx context.Context) 
 func (mr *MockRemediationManagerInterfaceMockRecorder) GetUnhealthyHost(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnhealthyHost", reflect.TypeOf((*MockRemediationManagerInterface)(nil).GetUnhealthyHost), ctx)
-}
-
-// HasRebootAnnotation mocks base method
-func (m *MockRemediationManagerInterface) HasRebootAnnotation(host *v1alpha1.BareMetalHost) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HasRebootAnnotation", host)
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// HasRebootAnnotation indicates an expected call of HasRebootAnnotation
-func (mr *MockRemediationManagerInterfaceMockRecorder) HasRebootAnnotation(host interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasRebootAnnotation", reflect.TypeOf((*MockRemediationManagerInterface)(nil).HasRebootAnnotation), host)
 }
 
 // OnlineStatus mocks base method
@@ -273,16 +273,16 @@ func (mr *MockRemediationManagerInterfaceMockRecorder) IncreaseRetryCount() *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncreaseRetryCount", reflect.TypeOf((*MockRemediationManagerInterface)(nil).IncreaseRetryCount))
 }
 
-// DeleteCapiMachine mocks base method
-func (m *MockRemediationManagerInterface) DeleteCapiMachine(ctx context.Context) error {
+// SetOwnerRemediatedCondition mocks base method
+func (m *MockRemediationManagerInterface) SetOwnerRemediatedCondition(ctx context.Context) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteCapiMachine", ctx)
+	ret := m.ctrl.Call(m, "SetOwnerRemediatedCondition", ctx)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteCapiMachine indicates an expected call of DeleteCapiMachine
-func (mr *MockRemediationManagerInterfaceMockRecorder) DeleteCapiMachine(ctx interface{}) *gomock.Call {
+// SetOwnerRemediatedCondition indicates an expected call of SetOwnerRemediatedCondition
+func (mr *MockRemediationManagerInterfaceMockRecorder) SetOwnerRemediatedCondition(ctx interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCapiMachine", reflect.TypeOf((*MockRemediationManagerInterface)(nil).DeleteCapiMachine), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetOwnerRemediatedCondition", reflect.TypeOf((*MockRemediationManagerInterface)(nil).SetOwnerRemediatedCondition), ctx)
 }

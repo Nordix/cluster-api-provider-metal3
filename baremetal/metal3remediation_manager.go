@@ -18,26 +18,24 @@ package baremetal
 
 import (
 	"context"
-	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 
 	bmh "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	capm3 "github.com/metal3-io/cluster-api-provider-metal3/api/v1alpha4"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	capi "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	rebootAnnotation = "reboot.metal3.io"
+	rebootAnnotation    = "reboot.metal3.io"
+	unhealthyAnnotation = "capi.metal3.io/unhealthy="
 )
 
 // RemediationManagerInterface is an interface for a RemediationManager
@@ -45,9 +43,9 @@ type RemediationManagerInterface interface {
 	SetFinalizer()
 	UnsetFinalizer()
 	TimeToRemediate(timeout time.Duration) (bool, time.Duration)
-	SetAnnotation(ctx context.Context, annotation string) error
+	SetRebootAnnotation(ctx context.Context) error
+	SetUnhealthyAnnotation(ctx context.Context) error
 	GetUnhealthyHost(ctx context.Context) (*bmh.BareMetalHost, *patch.Helper, error)
-	HasRebootAnnotation(host *bmh.BareMetalHost) bool
 	OnlineStatus(host *bmh.BareMetalHost) bool
 	GetRemediationType() capm3.RemediationType
 	RetryLimitIsSet() bool
@@ -58,7 +56,7 @@ type RemediationManagerInterface interface {
 	HasReachRetryLimit() bool
 	GetTimeout() *metav1.Duration
 	IncreaseRetryCount()
-	DeleteCapiMachine(ctx context.Context) error
+	SetOwnerRemediatedCondition(ctx context.Context) error
 }
 
 // RemediationManager is responsible for performing remediation reconciliation
@@ -121,9 +119,8 @@ func (r *RemediationManager) TimeToRemediate(timeout time.Duration) (bool, time.
 	return false, nextRemediation
 }
 
-// SetPauseAnnotation sets the pause annotations on associated bmh
-func (r *RemediationManager) SetAnnotation(ctx context.Context, annotation string) error {
-	// look for associated BMH
+// SetRebootAnnotation sets reboot annotation on unhealthy host
+func (r *RemediationManager) SetRebootAnnotation(ctx context.Context) error {
 	host, helper, err := r.GetUnhealthyHost(ctx)
 	if err != nil {
 		return err
@@ -132,26 +129,23 @@ func (r *RemediationManager) SetAnnotation(ctx context.Context, annotation strin
 		return nil
 	}
 
-	if annotation == "reboot" {
-		r.Log.Info("Adding Reboot annotation to BareMetalHost")
-		host.Annotations[rebootAnnotation] = "reboot.metal3.io="
-	}
+	r.Log.Info("Adding Reboot annotation to BareMetalHost")
+	host.Annotations[rebootAnnotation] = rebootAnnotation
+	return helper.Patch(ctx, host)
+}
 
-	if annotation == "unhealthy" {
-		r.Log.Info("Adding Reboot annotation to BareMetalHost")
-		host.Annotations[capm3.UnhealthyAnnotation] = "capi.metal3.io/unhealthy="
-	}
-
-	for annotation := range host.GetAnnotations() {
-		r.Log.Info("ANNOTATION", annotation)
-	}
-
-	// Setting annotation with BMH status
-	newAnnotation, err := json.Marshal(&host.Status)
+// SetUnhealthyAnnotation sets capm3.UnhealthyAnnotation on unhealthy host
+func (r *RemediationManager) SetUnhealthyAnnotation(ctx context.Context) error {
+	host, helper, err := r.GetUnhealthyHost(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshall status annotation")
+		return err
 	}
-	host.Annotations[bmh.StatusAnnotation] = string(newAnnotation)
+	if host == nil {
+		return nil
+	}
+
+	r.Log.Info("Adding Unhealthy annotation to BareMetalHost")
+	host.Annotations[capm3.UnhealthyAnnotation] = unhealthyAnnotation
 	return helper.Patch(ctx, host)
 }
 
@@ -198,32 +192,14 @@ func getUnhealthyHost(ctx context.Context, m3Machine *capm3.Metal3Machine, cl cl
 	return &host, nil
 }
 
-// hasRebootAnnotation checks for existence of reboot annotations and returns true if at least one exist
-func (r *RemediationManager) HasRebootAnnotation(host *bmh.BareMetalHost) bool {
-	for annotation := range host.Annotations {
-		if isRebootAnnotation(annotation) {
-			return true
-		}
-	}
-	return false
-}
-
-// isRebootAnnotation returns true if the provided annotation is a reboot annotation (either suffixed or not)
-func isRebootAnnotation(annotation string) bool {
-	return strings.HasPrefix(annotation, rebootAnnotation+"/") || annotation == rebootAnnotation
-}
-
-// onlineStatus checks if hosts Online field in spec is set to false
+// onlineStatus returns hosts Online field value
 func (r *RemediationManager) OnlineStatus(host *bmh.BareMetalHost) bool {
 	return host.Spec.Online
 }
 
-// getRemediationType reutrn type of remediation strategy
+// getRemediationType return type of remediation strategy
 func (r *RemediationManager) GetRemediationType() capm3.RemediationType {
-	if r.Metal3Remediation.Spec.Strategy.Type != "" {
-		return r.Metal3Remediation.Spec.Strategy.Type
-	}
-	return ""
+	return r.Metal3Remediation.Spec.Strategy.Type
 }
 
 // retryLimitIsSet returns true if retryLimit is set, false if not
@@ -268,34 +244,17 @@ func (r *RemediationManager) IncreaseRetryCount() {
 	r.Metal3Remediation.Status.RetryCount++
 }
 
-func (r *RemediationManager) DeleteCapiMachine(ctx context.Context) error {
-	machine, err := r.getCapiMachineRef(ctx)
-
+func (r *RemediationManager) SetOwnerRemediatedCondition(ctx context.Context) error {
+	machineHelper, err := patch.NewHelper(r.Machine, r.Client)
 	if err != nil {
-		r.Log.Info("Unable to retrive the CAPI machine")
+		r.Log.Info("Unable to create patch helper for Machine")
 		return err
 	}
-
-	if machine.GetDeletionTimestamp() == nil {
-		// Issue a delete for remediation request.
-		if err := r.Client.Delete(ctx, machine); err != nil && !apierrors.IsNotFound(err) {
-			r.Log.Error(err, "failed to delete %v %q for Machine %q", machine.GroupVersionKind(), machine.GetName(), r.Machine.Name)
-			return err
-		}
+	conditions.MarkFalse(r.Machine, capi.MachineOwnerRemediatedCondition, capi.WaitingForRemediationReason, capi.ConditionSeverityWarning, "")
+	err = machineHelper.Patch(ctx, r.Machine)
+	if err != nil {
+		r.Log.Info("Unable to patch Machine %d", r.Machine)
+		return err
 	}
 	return nil
-}
-
-// getExternalRemediationRequest gets reference to External Remediation Request, unstructured object.
-func (r *RemediationManager) getCapiMachineRef(ctx context.Context) (*unstructured.Unstructured, error) {
-	machine := new(unstructured.Unstructured)
-	machine.SetAPIVersion(r.Machine.APIVersion)
-	machine.SetKind(r.Machine.Kind)
-	machine.SetName(r.Machine.Name)
-	key := client.ObjectKey{Name: machine.GetName(), Namespace: r.Machine.Namespace}
-
-	if err := r.Client.Get(ctx, key, machine); err != nil {
-		return nil, err
-	}
-	return machine, nil
 }

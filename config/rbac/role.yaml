@@ -55,6 +55,26 @@ rules:
 - apiGroups:
   - cluster.x-k8s.io
   resources:
+  - machine
+  verbs:
+  - create
+  - delete
+  - list
+  - patch
+  - update
+  - verbs=get
+  - watch
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
+  - machine/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - cluster.x-k8s.io
+  resources:
   - machines
   - machines/status
   verbs:

@@ -4,19 +4,25 @@ go 1.16
 
 require (
 	cloud.google.com/go v0.74.0 // indirect
+	github.com/emicklei/go-restful v2.14.2+incompatible // indirect
 	github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr v0.3.0 // indirect
+	github.com/go-openapi/spec v0.19.9 // indirect
+	github.com/go-openapi/swag v0.19.9 // indirect
+	github.com/gobuffalo/envy v1.7.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.4.4
 	github.com/google/gofuzz v1.2.0
 	github.com/google/uuid v1.1.4 // indirect
 	github.com/googleapis/gnostic v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/metal3-io/baremetal-operator v0.0.0-20210111093319-93a6fd209b9a
 	github.com/metal3-io/ip-address-manager v0.0.4
 	github.com/nxadm/tail v1.4.6 // indirect
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.4
+	github.com/operator-framework/operator-sdk v0.17.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.9.0 // indirect
 	github.com/prometheus/procfs v0.3.0 // indirect

@@ -28,8 +28,6 @@ import (
 	"github.com/metal3-io/cluster-api-provider-metal3/baremetal"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
-	//capi "sigs.k8s.io/cluster-api/api/v1alpha3"
-	//"sigs.k8s.io/cluster-api/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/cluster-api/util"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -46,6 +44,8 @@ type Metal3RemediationReconciler struct {
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3remediations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3remediations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machine,verbs=verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machine/status,verbs=get;update;patch
 
 func (r *Metal3RemediationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
@@ -56,12 +56,14 @@ func (r *Metal3RemediationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 
 	if err := r.Client.Get(ctx, req.NamespacedName, metal3Remediation); err != nil {
 		if apierrors.IsNotFound(err) {
+			remediationLog.Error(err, "unable to get metal3Remediation")
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}
 	helper, err := patch.NewHelper(metal3Remediation, r.Client)
 	if err != nil {
+		remediationLog.Error(err, "failed to init patch helper")
 		return ctrl.Result{}, errors.Wrap(err, "failed to init patch helper")
 	}
 	// Always patch metal3Remediation when exiting this function so we can persist any metal3Remediation changes.
@@ -77,7 +79,7 @@ func (r *Metal3RemediationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	if err != nil {
 		return ctrl.Result{}, errors.Wrapf(err, "metal3Remediation's owner Machine could not be retrieved")
 	}
-	remediationLog = remediationLog.WithValues("machine", capiMachine.Name)
+	remediationLog = remediationLog.WithValues("unhealthy machine detected", capiMachine.Name)
 
 	// Fetch Metal3Machine
 	metal3Machine := capm3.Metal3Machine{}
@@ -86,7 +88,8 @@ func (r *Metal3RemediationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 		Namespace: capiMachine.Spec.InfrastructureRef.Namespace,
 	}
 	err = r.Get(ctx, key, &metal3Machine)
-	if apierrors.IsNotFound(err) || err != nil {
+	if err != nil {
+		remediationLog.Error(err, "metal3machine not found")
 		return ctrl.Result{}, errors.Wrapf(err, "metal3machine not found")
 	}
 
@@ -95,6 +98,7 @@ func (r *Metal3RemediationReconciler) Reconcile(req ctrl.Request) (ctrl.Result, 
 	// Create a helper for managing the remediation object.
 	remediationMgr, err := r.ManagerFactory.NewRemediationManager(metal3Remediation, &metal3Machine, capiMachine, remediationLog)
 	if err != nil {
+		remediationLog.Error(err, "failed to create helper for managing the metal3remediation")
 		return ctrl.Result{}, errors.Wrapf(err, "failed to create helper for managing the metal3remediation")
 	}
 
@@ -117,26 +121,23 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 		return ctrl.Result{}, errors.Wrapf(err, "unable to find a host for unhealthy machine")
 	}
 
-	// If user has set bmh.Spec.Online to false or annotated the host with any poweroff annotations
+	// If user has set bmh.Spec.Online to false
 	// do not try to remediate the host
-	if !remediationMgr.OnlineStatus(host) || remediationMgr.HasRebootAnnotation(host) {
-		r.Log.Info("Host is powered off, unable to remediatiate")
+	if !remediationMgr.OnlineStatus(host) {
+		r.Log.Info("Host is powered off, unable to remediate")
+		remediationMgr.SetRemediationPhase(capm3.PhaseFailed)
+		return ctrl.Result{}, nil
 	}
-
-	// If the Metal3Remediation doesn't have finalizer, add it.
-	//remediationMgr.SetFinalizer()
-
-	// TODO in normal situtation BMO should be able to power on the host.
-	// handle the cases where BMO is unable to retain nodes power status
-	// if host.Status.PoweredOn == false && host.Spec.Online == true {
-	// // 	// HANDLE THIS CASE SEPARATELY
-	// // 	return nil
-	// }
 
 	remediationType := remediationMgr.GetRemediationType()
 
+	if remediationType != capm3.RebootRemediationStrategy {
+		r.Log.Info("unsupported remediation strategy")
+		return ctrl.Result{}, nil
+	}
+
 	if remediationType == capm3.RebootRemediationStrategy {
-		// If no phase set, default to pending
+		// If no phase set, default to running
 		if remediationMgr.GetRemediationPhase() == "" {
 			remediationMgr.SetRemediationPhase(capm3.PhaseRunning)
 		}
@@ -146,7 +147,7 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 			// host is not rebooted yet
 			if remediationMgr.GetLastRemediatedTime() == nil {
 				r.Log.Info("Rebooting the host")
-				err := remediationMgr.SetAnnotation(ctx, "reboot")
+				err := remediationMgr.SetRebootAnnotation(ctx)
 				if err != nil {
 					return ctrl.Result{}, errors.Wrap(err, "error setting reboot annotation")
 				}
@@ -159,7 +160,7 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 				okToRemediate, nextRemediation := remediationMgr.TimeToRemediate(remediationMgr.GetTimeout().Duration)
 
 				if okToRemediate {
-					err := remediationMgr.SetAnnotation(ctx, "reboot")
+					err := remediationMgr.SetRebootAnnotation(ctx)
 					if err != nil {
 						return ctrl.Result{}, errors.Wrapf(err, "error setting reboot annotation")
 					}
@@ -180,15 +181,18 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 			okToStop, nextCheck := remediationMgr.TimeToRemediate(remediationMgr.GetTimeout().Duration)
 
 			if okToStop {
-				// If machine is still unhealthy delete after last remediation attempt, delete unhealthy machine.
 				remediationMgr.SetRemediationPhase(capm3.PhaseDeleting)
-				err := remediationMgr.DeleteCapiMachine(ctx)
+				// When machine is still unhealthy after remediation, setting of OwnerRemediatedCondition
+				// moves control to CAPI machine controller. The owning controller will do
+				// preflight checks and handles the Machine deletion
+				err = remediationMgr.SetOwnerRemediatedCondition(ctx)
 				if err != nil {
-					return ctrl.Result{}, errors.Wrapf(err, "unable to delete the Machine")
+					return ctrl.Result{}, errors.Wrapf(err, "error setting condition")
 				}
 
 				// Remediation failed set unhealthy annotation on BMH
-				err = remediationMgr.SetAnnotation(ctx, "unhealthy")
+				// This prevents BMH to be selected as a host.
+				err = remediationMgr.SetUnhealthyAnnotation(ctx)
 				if err != nil {
 					return ctrl.Result{}, errors.Wrapf(err, "error setting unhealthy annotation")
 				}
@@ -208,10 +212,6 @@ func (r *Metal3RemediationReconciler) reconcileNormal(ctx context.Context,
 func (r *Metal3RemediationReconciler) reconcileDelete(ctx context.Context,
 	remediationMgr baremetal.RemediationManagerInterface,
 ) (ctrl.Result, error) {
-
-	// metal3remediation is marked for deletion and ready to be deleted,
-	// so remove the finalizer.
-	// remediationMgr.UnsetFinalizer()
 	return ctrl.Result{}, nil
 }
 

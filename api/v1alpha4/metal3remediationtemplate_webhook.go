@@ -34,7 +34,7 @@ var (
 	// Minimum time between remediation retries
 	minTimeout = metav1.Duration{Duration: 100 * time.Second}
 	// Mininum remediation retry limit is 1.
-	// Controller will try to remediate unhealhy node at atleast once
+	// Controller will try to remediate unhealhy node at least once
 	minRetryLimit = 1
 )
 

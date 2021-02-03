@@ -27,7 +27,7 @@ const (
 	// removing it from the apiserver.
 	RemediationFinalizer = "metal3remediation.infrastructure.cluster.x-k8s.io"
 
-	// ScaleDownRolloutType constant is to set rollout strategy type to scale down.
+	// RebootRemediationStrategy sets RemediationType to Reboot.
 	RebootRemediationStrategy RemediationType = "Reboot"
 )
 
@@ -35,11 +35,15 @@ const (
 	// PhaseRunning represents state during remediation.
 	PhaseRunning = "Running"
 
-	// PhaseFinalizing represents state during remediation when controller has done it's job, but still waiting the result of the last remediation step.
+	// PhaseWaiting represents state during remediation when controller has done it's job, but still waiting the result of the last remediation step.
 	PhaseWaiting = "Waiting"
 
 	// PhaseDeleting represents state where host remediation has failed and controller is deleting the unhealthy Machine object from the cluster.
 	PhaseDeleting = "Deleting machine"
+
+	// PhaseFailed represents state where host will not be remediated.
+	// Remediation Controller will set state to PhaseFailed when user has set bmh.Spec.Online to false
+	PhaseFailed = "Failed"
 )
 
 // Metal3RemediationSpec defines the desired state of Metal3Remediation.

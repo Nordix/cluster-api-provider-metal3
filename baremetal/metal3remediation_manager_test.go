@@ -240,59 +240,59 @@ var _ = Describe("Metal3Remediation manager", func() {
 		ExpectTrue        bool
 	}
 
-	DescribeTable("Test RebootAnnotation",
-		func(tc testCaseEnsureRebootAnnotation) {
-			remediationMgr, err := NewRemediationManager(nil, tc.Metal3Remediation, nil, nil,
-				klogr.New(),
-			)
-			Expect(err).NotTo(HaveOccurred())
+	// DescribeTable("Test RebootAnnotation",
+	// 	func(tc testCaseEnsureRebootAnnotation) {
+	// 		remediationMgr, err := NewRemediationManager(nil, tc.Metal3Remediation, nil, nil,
+	// 			klogr.New(),
+	// 		)
+	// 		Expect(err).NotTo(HaveOccurred())
 
-			hasAnnotation := remediationMgr.HasRebootAnnotation(tc.Host)
-			if tc.ExpectTrue {
-				Expect(hasAnnotation).To(BeTrue())
-			} else {
-				Expect(hasAnnotation).To(BeFalse())
-			}
-		},
-		Entry("Annotation exists and it is reboot annotation", testCaseEnsureRebootAnnotation{
-			Host: &bmh.BareMetalHost{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						rebootAnnotation: "reboot.metal3.io=",
-					},
-				},
-			},
-			ExpectTrue: true,
-		}),
-		Entry("Annotation exists and it is power off annotation", testCaseEnsureRebootAnnotation{
-			Host: &bmh.BareMetalHost{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						rebootAnnotation: "reboot.metal3.io/poweroff=",
-					},
-				},
-			},
-			ExpectTrue: true,
-		}),
-		Entry("Annotation exists but is wrong", testCaseEnsureRebootAnnotation{
-			Host: &bmh.BareMetalHost{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						HostAnnotation: "myns/wrongvalue",
-					},
-				},
-			},
-			ExpectTrue: false,
-		}),
-		Entry("Annotations are empty", testCaseEnsureRebootAnnotation{
-			Host: &bmh.BareMetalHost{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
-			},
-			ExpectTrue: false,
-		}),
-	)
+	// 		hasAnnotation := remediationMgr.HasRebootAnnotation(tc.Host)
+	// 		if tc.ExpectTrue {
+	// 			Expect(hasAnnotation).To(BeTrue())
+	// 		} else {
+	// 			Expect(hasAnnotation).To(BeFalse())
+	// 		}
+	// 	},
+	// 	Entry("Annotation exists and it is reboot annotation", testCaseEnsureRebootAnnotation{
+	// 		Host: &bmh.BareMetalHost{
+	// 			ObjectMeta: metav1.ObjectMeta{
+	// 				Annotations: map[string]string{
+	// 					rebootAnnotation: "reboot.metal3.io=",
+	// 				},
+	// 			},
+	// 		},
+	// 		ExpectTrue: true,
+	// 	}),
+	// 	Entry("Annotation exists and it is power off annotation", testCaseEnsureRebootAnnotation{
+	// 		Host: &bmh.BareMetalHost{
+	// 			ObjectMeta: metav1.ObjectMeta{
+	// 				Annotations: map[string]string{
+	// 					rebootAnnotation: "reboot.metal3.io/poweroff=",
+	// 				},
+	// 			},
+	// 		},
+	// 		ExpectTrue: true,
+	// 	}),
+	// 	Entry("Annotation exists but is wrong", testCaseEnsureRebootAnnotation{
+	// 		Host: &bmh.BareMetalHost{
+	// 			ObjectMeta: metav1.ObjectMeta{
+	// 				Annotations: map[string]string{
+	// 					HostAnnotation: "myns/wrongvalue",
+	// 				},
+	// 			},
+	// 		},
+	// 		ExpectTrue: false,
+	// 	}),
+	// 	Entry("Annotations are empty", testCaseEnsureRebootAnnotation{
+	// 		Host: &bmh.BareMetalHost{
+	// 			ObjectMeta: metav1.ObjectMeta{
+	// 				Annotations: map[string]string{},
+	// 			},
+	// 		},
+	// 		ExpectTrue: false,
+	// 	}),
+	// )
 
 	DescribeTable("Test OnlineStatus",
 		func(tc testCaseEnsureRebootAnnotation) {
