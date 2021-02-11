@@ -520,6 +520,7 @@ kind: Metal3MachineTemplate
 metadata:
   name: md-0
 spec:
+  nodeReuse: false
   template:
     spec:
       image:

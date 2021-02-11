@@ -503,7 +503,20 @@ var _ = Describe("Metal3Machine manager", func() {
 				Annotations: map[string]string{capm3.UnhealthyAnnotation: "unhealthy"},
 			},
 		}
-
+		hostWithNodeReuseLabelSetToKCP := bmh.BareMetalHost{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hostWithNodeReuseLabelSetToKCP",
+				Namespace: "myns",
+				Labels:    map[string]string{NodeReuseLabelName: "kcp-pool1"},
+			},
+		}
+		hostWithNodeReuseLabelSetToMD := bmh.BareMetalHost{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "hostWithNodeReuseLabelSetToMD",
+				Namespace: "myns",
+				Labels:    map[string]string{NodeReuseLabelName: "md-pool1"},
+			},
+		}
 		m3mconfig, infrastructureRef := newConfig("", map[string]string{},
 			[]capm3.HostSelectorRequirement{},
 		)
@@ -564,6 +577,18 @@ var _ = Describe("Metal3Machine manager", func() {
 				M3Machine:        m3mconfig2,
 				ExpectedHostName: host2.Name,
 			}),
+			Entry("Pick hostWithNodeReuseLabelSetToKCP, which has a matching NodeReuseLabelName", testCaseChooseHost{
+				Machine:          newMachine("machine1", "", infrastructureRef2),
+				Hosts:            []runtime.Object{&hostWithNodeReuseLabelSetToKCP, &host3, &host2},
+				M3Machine:        m3mconfig2,
+				ExpectedHostName: hostWithNodeReuseLabelSetToKCP.Name,
+			}),
+			Entry("Pick hostWithNodeReuseLabelSetToMD, which has a matching NodeReuseLabelName", testCaseChooseHost{
+				Machine:          newMachine("machine1", "", infrastructureRef2),
+				Hosts:            []runtime.Object{&hostWithNodeReuseLabelSetToMD, &host3, &host2},
+				M3Machine:        m3mconfig2,
+				ExpectedHostName: hostWithNodeReuseLabelSetToMD.Name,
+			}),
 			Entry("Ignore discoveredHost and pick host2, which lacks a ConsumerRef",
 				testCaseChooseHost{
 					Machine:          newMachine("machine1", "", infrastructureRef2),
@@ -600,6 +625,14 @@ var _ = Describe("Metal3Machine manager", func() {
 					Hosts:            []runtime.Object{&hostWithLabel},
 					M3Machine:        m3mconfig,
 					ExpectedHostName: hostWithLabel.Name,
+				},
+			),
+			Entry("Choose hosts with a NodeReuseLabelName set to KCP, even without a label selector",
+				testCaseChooseHost{
+					Machine:          newMachine("machine1", "", infrastructureRef),
+					Hosts:            []runtime.Object{&hostWithNodeReuseLabelSetToKCP},
+					M3Machine:        m3mconfig,
+					ExpectedHostName: hostWithNodeReuseLabelSetToKCP.Name,
 				},
 			),
 			Entry("Choose the host with the right label", testCaseChooseHost{
@@ -1347,6 +1380,9 @@ var _ = Describe("Metal3Machine manager", func() {
 		ExpectSecretDeleted             bool
 		ExpectClusterLabelDeleted       bool
 		ExpectedPausedAnnotationDeleted bool
+		NodeReuseEnabled                bool
+		MachineIsControlPlane           bool
+		MachineIsNotControlPlane        bool
 	}
 
 	DescribeTable("Test Delete function",
@@ -1452,6 +1488,18 @@ var _ = Describe("Metal3Machine manager", func() {
 				// Other labels are not removed
 				Expect(savedHost.Labels["foo"]).To(Equal("bar"))
 				Expect(savedCred.Labels["foo"]).To(Equal("bar"))
+			}
+			if tc.NodeReuseEnabled {
+				m3mTemplate := capm3.Metal3MachineTemplate{}
+				err = c.Get(context.TODO(),
+					client.ObjectKey{
+						Name:      tc.M3Machine.Name,
+						Namespace: tc.M3Machine.Namespace,
+					},
+					&m3mTemplate,
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(m3mTemplate.Spec.NodeReuse).To(BeTrue())
 			}
 		},
 		Entry("Deprovisioning needed", testCaseDelete{

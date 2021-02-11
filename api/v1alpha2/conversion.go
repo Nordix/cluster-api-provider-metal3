@@ -130,6 +130,7 @@ func (src *Metal3MachineTemplate) ConvertTo(dstRaw conversion.Hub) error {
 	dst.Spec.Template.Spec.NetworkData = restored.Spec.Template.Spec.NetworkData
 	dst.Spec.Template.Spec.DataTemplate = restored.Spec.Template.Spec.DataTemplate
 	dst.Spec.Template.Spec.Image = restored.Spec.Template.Spec.Image
+	dst.Spec.NodeReuse = restored.Spec.NodeReuse
 
 	return nil
 }
@@ -264,6 +265,14 @@ func Convert_v1alpha4_Image_To_v1alpha2_Image(in *v1alpha4.Image, out *Image, s 
 	}
 
 	// Discards unused ObjectMeta
+
+	return nil
+}
+
+func Convert_v1alpha4_Metal3MachineTemplateSpec_To_v1alpha2_Metal3MachineTemplateSpec(in *v1alpha4.Metal3MachineTemplateSpec, out *Metal3MachineTemplateSpec, s apiconversion.Scope) error {
+	if err := autoConvert_v1alpha4_Metal3MachineTemplateSpec_To_v1alpha2_Metal3MachineTemplateSpec(in, out, s); err != nil {
+		return err
+	}
 
 	return nil
 }
