@@ -56,6 +56,7 @@ var (
 	leaderElectionRetryPeriod   time.Duration
 	syncPeriod                  time.Duration
 	webhookPort                 int
+	webhookCertDir              string
 	healthAddr                  string
 	watchNamespace              string
 	watchFilterValue            string
@@ -91,6 +92,7 @@ func main() {
 		RetryPeriod:            &leaderElectionRetryPeriod,
 		SyncPeriod:             &syncPeriod,
 		Port:                   webhookPort,
+		CertDir:                webhookCertDir,
 		HealthProbeBindAddress: healthAddr,
 		Namespace:              watchNamespace,
 	})
@@ -183,6 +185,13 @@ func initFlags(fs *pflag.FlagSet) {
 		"webhook-port",
 		9443,
 		"Webhook Server port (set to 0 to disable)",
+	)
+
+	flag.StringVar(
+		&webhookCertDir,
+		"webhook-cert-dir",
+		"/tmp/k8s-webhook-server/serving-certs/",
+		"Webhook cert dir, only used when webhook-port is specified.",
 	)
 
 	flag.StringVar(
