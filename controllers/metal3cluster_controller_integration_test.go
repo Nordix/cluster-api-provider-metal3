@@ -50,9 +50,10 @@ var _ = Describe("Reconcile metal3Cluster", func() {
 			c := fake.NewFakeClientWithScheme(setupScheme(), tc.Objects...)
 
 			r := &Metal3ClusterReconciler{
-				Client:         c,
-				ManagerFactory: baremetal.NewManagerFactory(c),
-				Log:            klogr.New(),
+				Client:           c,
+				ManagerFactory:   baremetal.NewManagerFactory(c),
+				Log:              klogr.New(),
+				WatchFilterValue: "",
 			}
 
 			req := reconcile.Request{

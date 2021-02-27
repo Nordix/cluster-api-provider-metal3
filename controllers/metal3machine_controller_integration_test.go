@@ -192,6 +192,7 @@ var _ = Describe("Reconcile metal3machine", func() {
 				ManagerFactory:   baremetal.NewManagerFactory(c),
 				Log:              klogr.New(),
 				CapiClientGetter: mockCapiClientGetter,
+				WatchFilterValue: "",
 			}
 
 			req := reconcile.Request{

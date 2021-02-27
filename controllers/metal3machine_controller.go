@@ -49,6 +49,7 @@ type Metal3MachineReconciler struct {
 	ManagerFactory   baremetal.ManagerFactoryInterface
 	Log              logr.Logger
 	CapiClientGetter baremetal.ClientGetter
+	WatchFilterValue string
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machines,verbs=get;list;watch;create;update;patch;delete

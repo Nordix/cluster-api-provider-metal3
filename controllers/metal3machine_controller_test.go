@@ -207,6 +207,7 @@ var _ = Describe("Metal3Machine manager", func() {
 				ManagerFactory:   baremetal.NewManagerFactory(c),
 				Log:              klogr.New(),
 				CapiClientGetter: nil,
+				WatchFilterValue: "",
 			}
 		})
 
@@ -296,6 +297,7 @@ var _ = Describe("Metal3Machine manager", func() {
 				ManagerFactory:   baremetal.NewManagerFactory(c),
 				Log:              klogr.New(),
 				CapiClientGetter: nil,
+				WatchFilterValue: "",
 			}
 		})
 
@@ -357,8 +359,9 @@ var _ = Describe("Metal3Machine manager", func() {
 			c := fake.NewFakeClientWithScheme(setupScheme(), objects...)
 
 			r := Metal3MachineReconciler{
-				Client: c,
-				Log:    klogr.New(),
+				Client:           c,
+				Log:              klogr.New(),
+				WatchFilterValue: "",
 			}
 
 			obj := handler.MapObject{

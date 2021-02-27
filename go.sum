@@ -2160,6 +2160,7 @@ sigs.k8s.io/cluster-api v0.3.9 h1:WongQFeW+vbII9Karc3nIarxMfuUuTr33QU9aSyiKfs=
 sigs.k8s.io/cluster-api v0.3.9/go.mod h1:A7Om/um/j7hvqTvm+KEMEjDOn6fHKRhcVtBiuAH+tYQ=
 sigs.k8s.io/cluster-api v0.3.12 h1:iogA3mXvwRfNU3ZCZXbqM1ZVWUxtWobgu3zRd5IkMTM=
 sigs.k8s.io/cluster-api v0.3.12/go.mod h1:KuUGKyD9+8TwYIcwoqDaScWKsee74/bpPo2sqQMwy8o=
+sigs.k8s.io/cluster-api v0.3.14 h1:kyAJY69tWXvyOs3e8GvDrg0H76qQOXEghcmiYOwFB7k=
 sigs.k8s.io/controller-runtime v0.5.2/go.mod h1:JZUwSMVbxDupo0lTJSSFP5pimEyxGynROImSsqIOx1A=
 sigs.k8s.io/controller-runtime v0.5.8/go.mod h1:UI/unU7Q+mo/rWBrND0NAaVNj/Xjh/+aqSv/M3njpmo=
 sigs.k8s.io/controller-runtime v0.5.10/go.mod h1:OTqxLuz7gVcrq+BHGUgedRu6b2VIKCEc7Pu4Jbwui0A=

@@ -35,6 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	//TODO to be uncommented once controller runtime version and capi version is uplifted
+	//"sigs.k8s.io/cluster-api/util/predicates"
 )
 
 const (
@@ -43,9 +45,10 @@ const (
 
 // Metal3DataReconciler reconciles a Metal3Data object
 type Metal3DataReconciler struct {
-	Client         client.Client
-	ManagerFactory baremetal.ManagerFactoryInterface
-	Log            logr.Logger
+	Client           client.Client
+	ManagerFactory   baremetal.ManagerFactoryInterface
+	Log              logr.Logger
+	WatchFilterValue string
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
@@ -155,6 +158,8 @@ func (r *Metal3DataReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				ToRequests: handler.ToRequestsFunc(r.Metal3IPClaimToMetal3Data),
 			},
 		).
+		//TODO to be uncommented once controller runtime version and capi version is uplifted
+		//WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Complete(r)
 }
 

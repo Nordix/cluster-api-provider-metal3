@@ -102,9 +102,10 @@ var _ = Describe("Metal3DataTemplate manager", func() {
 			}
 
 			dataTemplateReconcile := &Metal3DataTemplateReconciler{
-				Client:         c,
-				ManagerFactory: f,
-				Log:            klogr.New(),
+				Client:           c,
+				ManagerFactory:   f,
+				Log:              klogr.New(),
+				WatchFilterValue: "",
 			}
 
 			req := reconcile.Request{
@@ -221,9 +222,10 @@ var _ = Describe("Metal3DataTemplate manager", func() {
 			c := fake.NewFakeClientWithScheme(setupScheme())
 
 			dataTemplateReconcile := &Metal3DataTemplateReconciler{
-				Client:         c,
-				ManagerFactory: baremetal.NewManagerFactory(c),
-				Log:            klogr.New(),
+				Client:           c,
+				ManagerFactory:   baremetal.NewManagerFactory(c),
+				Log:              klogr.New(),
+				WatchFilterValue: "",
 			}
 			m := baremetal_mocks.NewMockDataTemplateManagerInterface(gomockCtrl)
 
@@ -274,9 +276,10 @@ var _ = Describe("Metal3DataTemplate manager", func() {
 			c := fake.NewFakeClientWithScheme(setupScheme())
 
 			dataTemplateReconcile := &Metal3DataTemplateReconciler{
-				Client:         c,
-				ManagerFactory: baremetal.NewManagerFactory(c),
-				Log:            klogr.New(),
+				Client:           c,
+				ManagerFactory:   baremetal.NewManagerFactory(c),
+				Log:              klogr.New(),
+				WatchFilterValue: "",
 			}
 			m := baremetal_mocks.NewMockDataTemplateManagerInterface(gomockCtrl)
 
