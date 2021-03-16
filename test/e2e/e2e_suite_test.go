@@ -1,4 +1,4 @@
-package e2e_test
+package e2e
 
 import (
 	"context"
@@ -18,6 +18,12 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/bootstrap"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
+)
+
+const (
+	KubernetesVersion = "KUBERNETES_VERSION"
+	CNIPath           = "CNI"
+	CNIResources      = "CNI_RESOURCES"
 )
 
 // Test suite flags.
@@ -80,6 +86,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	By(fmt.Sprintf("Creating a clusterctl local repository into %q", artifactFolder))
 	clusterctlConfigPath = createClusterctlLocalRepository(e2eConfig, filepath.Join(artifactFolder, "repository"))
+	fmt.Println("---clusterctlconfigpath: ", clusterctlConfigPath)
 
 	By("Setting up the bootstrap cluster")
 	bootstrapClusterProvider, bootstrapClusterProxy = setupBootstrapCluster(e2eConfig, scheme, useExistingCluster)
@@ -169,6 +176,7 @@ func setupBootstrapCluster(config *clusterctl.E2EConfig, scheme *runtime.Scheme,
 
 		kubeconfigPath = clusterProvider.GetKubeconfigPath()
 		Expect(kubeconfigPath).To(BeAnExistingFile(), "Failed to get the kubeconfig file for the bootstrap cluster")
+		fmt.Println("---kubeconfigPath: ", kubeconfigPath)
 	}
 
 	clusterProxy := framework.NewClusterProxy("bootstrap", kubeconfigPath, scheme)

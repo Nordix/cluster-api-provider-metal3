@@ -63,7 +63,8 @@ providers:
       targetName: "cluster-template.yaml"
 
 variables:
-  KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.20.2}"
+  # KUBERNETES_VERSION: "${KUBERNETES_VERSION:-v1.20.2}"
+  KUBERNETES_VERSION: "v1.20.2"
   # Cluster Addons
   CNI: "./data/cni/calico/calico.yaml"
   IRONIC_URL: "https://172.22.0.2:6385/v1/"
@@ -74,6 +75,142 @@ variables:
   IRONIC_PASSWORD: "abcdefg123"
   IRONIC_INSPECTOR_USERNAME: "abcdefg123"
   IRONIC_INSPECTOR_PASSWORD: "abcdefg123"
+  # Target Cluster
+  CAPM3_VERSION: "v1alpha4"
+  IMAGE_FORMAT: "raw"
+  IMAGE_CHECKSUM_TYPE: "md5"
+  IMAGE_CHECKSUM: "http://172.22.0.1/images/UBUNTU_20.04_NODE_IMAGE_K8S_v1.20.2.qcow2.md5sum"
+  IMAGE_URL: "http://172.22.0.1/images/UBUNTU_20.04_NODE_IMAGE_K8S_v1.20.2.qcow2"
+  API_ENDPOINT_HOST: "192.168.111.249"
+  API_ENDPOINT_PORT: 6443
+  POD_CIDR: "192.168.0.0/18"
+  SERVICE_CIDR: "10.96.0.0/12"
+  CLUSTER_APIENDPOINT_HOST: "192.168.111.249"
+  IRONIC_ENDPOINT_BRIDGE: "ironicendpoint"
+  CTLPLANE_KUBEADM_EXTRA_CONFIG: |
+    users:
+    - name: metal3
+      sudo: \"ALL=(ALL) NOPASSWD:ALL\"
+      sshAuthorizedKeys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCQiOtRSEFej1LxofgNX7Eifn5QZRMsfVX3YRhqsvZ8NZePHk29L/TGT9FJJRsIaVZ81SlUWsfvlSKEjZWg5dyIt+lMKu3SP9U4/oxxFTQ7VpJ43jmPZ8GAJZOglcTQAWcNwYg44thUBfBmnVM2xcxwOCVQTWz0sQQ7+eUr4uYaH1ufAfr7oG7PN/VnEAN9B2/fZOlEZP33QCB2DMXly4qIiHKHAA7PnCvIHoekeTNVx1Rcu/tjCRuFK6HHR0vZ2BSYYunJrn5NQc4pESwTHGmHOGNdmarIi6wfDY543vGvpSh1Ic7FOSilNXiB5vXFOgqqJVosLQTwkpkMfflVPweBL2J0Ne0KPjKebZl6dUVqGJi7JsNtapnQ186calMpSuwsR2uUsYjJzMLZhwNhBDUYDzKunFHuSZDTCzdkad2los6+reNJCy08OSqeKZvli6+xY6qUYFU6MAJ+lRluZy2Xxz3dThzwLV++AAlOPq4CIFSAU0vHdQpxnUtTNdXBTdM= bote@est
+    preKubeadmCommands:
+      - netplan apply
+      - systemctl enable --now crio kubelet
+      - if (curl -sk --max-time 10 https://{{ CLUSTER_APIENDPOINT_HOST }}:6443/healthz); then echo \"keepalived already running\";else systemctl start keepalived; fi
+      - systemctl link /lib/systemd/system/monitor.keepalived.service
+      - systemctl enable monitor.keepalived.service
+      - systemctl start monitor.keepalived.service
+    postKubeadmCommands:
+      - mkdir -p /home/metal3/.kube
+      - cp /etc/kubernetes/admin.conf /home/metal3/.kube/config
+      - systemctl enable --now keepalived
+      - chown metal3:metal3 /home/metal3/.kube/config
+    files:
+      - path: /usr/local/bin/monitor.keepalived.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+            #!/bin/bash
+            while :; do
+              curl -sk https://127.0.0.1:6443/healthz 1>&2 > /dev/null
+              isOk=\$?
+              isActive=\$(systemctl show -p ActiveState keepalived.service | cut -d'=' -f2)
+              if [ \$isOk == \"0\" ] &&  [ \$isActive != \"active\" ]; then
+                logger 'API server is healthy, however keepalived is not running, starting keepalived'
+                echo 'API server is healthy, however keepalived is not running, starting keepalived'
+                sudo systemctl start keepalived.service
+              elif [ \$isOk != \"0\" ] &&  [ \$isActive == \"active\" ]; then
+                logger 'API server is not healthy, however keepalived running, stopping keepalived'
+                echo 'API server is not healthy, however keepalived running, stopping keepalived'
+                sudo systemctl stop keepalived.service
+              fi
+              sleep 5
+            done
+      - path: /lib/systemd/system/monitor.keepalived.service
+        owner: root:root
+        content: |
+            [Unit]
+            Description=Monitors keepalived adjusts status with that of API server
+            After=syslog.target network-online.target
+
+            [Service]
+            Type=simple
+            Restart=always
+            ExecStart=/usr/local/bin/monitor.keepalived.sh
+
+            [Install]
+            WantedBy=multi-user.target
+      - path: /etc/keepalived/keepalived.conf
+        content: |
+          ! Configuration File for keepalived
+          global_defs {
+              notification_email {
+              sysadmin@example.com
+              support@example.com
+              }
+              notification_email_from lb@example.com
+              smtp_server localhost
+              smtp_connect_timeout 30
+          }
+          vrrp_instance VI_2 {
+              state MASTER
+              interface enp2s0
+              virtual_router_id 2
+              priority 101
+              advert_int 1
+              virtual_ipaddress {
+                  {{ CLUSTER_APIENDPOINT_HOST }}
+              }
+          }
+      - path : /etc/netplan/52-ironicendpoint.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          network:
+            version: 2
+            renderer: networkd
+            bridges:
+              {{ IRONIC_ENDPOINT_BRIDGE }}:
+                interfaces: [enp1s0]
+                addresses:
+                - 172.22.0.100/24
+      - path : /etc/containers/registries.conf
+        content: |
+          [registries.search]
+          registries = ['docker.io']
+
+          [registries.insecure]
+          registries = ['{{ REGISTRY }}']
+
+  WORKERS_KUBEADM_EXTRA_CONFIG: |
+      users:
+      - name: metal3
+        sudo: \"ALL=(ALL) NOPASSWD:ALL\"
+        sshAuthorizedKeys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCQiOtRSEFej1LxofgNX7Eifn5QZRMsfVX3YRhqsvZ8NZePHk29L/TGT9FJJRsIaVZ81SlUWsfvlSKEjZWg5dyIt+lMKu3SP9U4/oxxFTQ7VpJ43jmPZ8GAJZOglcTQAWcNwYg44thUBfBmnVM2xcxwOCVQTWz0sQQ7+eUr4uYaH1ufAfr7oG7PN/VnEAN9B2/fZOlEZP33QCB2DMXly4qIiHKHAA7PnCvIHoekeTNVx1Rcu/tjCRuFK6HHR0vZ2BSYYunJrn5NQc4pESwTHGmHOGNdmarIi6wfDY543vGvpSh1Ic7FOSilNXiB5vXFOgqqJVosLQTwkpkMfflVPweBL2J0Ne0KPjKebZl6dUVqGJi7JsNtapnQ186calMpSuwsR2uUsYjJzMLZhwNhBDUYDzKunFHuSZDTCzdkad2los6+reNJCy08OSqeKZvli6+xY6qUYFU6MAJ+lRluZy2Xxz3dThzwLV++AAlOPq4CIFSAU0vHdQpxnUtTNdXBTdM= bote@est
+      preKubeadmCommands:
+        - netplan apply
+        - systemctl enable --now crio kubelet
+      files:
+        - path : /etc/netplan/52-ironicendpoint.yaml
+          owner: root:root
+          permissions: '0644'
+          content: |
+            network:
+              version: 2
+              renderer: networkd
+              bridges:
+                {{ IRONIC_ENDPOINT_BRIDGE }}:
+                  interfaces: [enp1s0]
+                  addresses:
+                  - 172.22.0.101/24
+        - path : /etc/containers/registries.conf
+          content: |
+             [registries.search]
+             registries = ['docker.io']
+ 
+             [registries.insecure]
+             registries = ['{{ REGISTRY }}']
 
 intervals:
   default/wait-controllers: ["3m", "10s"]

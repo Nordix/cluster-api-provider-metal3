@@ -103,7 +103,8 @@ test-e2e: ## Run e2e tests
 GINKGO_NOCOLOR ?= false
 ARTIFACTS ?= $(ROOT_DIR)/_artifacts
 E2E_CONF_FILE ?= $(ROOT_DIR)/test/e2e/config/e2e_conf.yaml
-SKIP_CLEANUP ?= false
+E2E_CONF_FILE_ENVSUBST ?= $(ROOT_DIR)/test/e2e/config/e2e_conf_envsubst.yaml
+SKIP_CLEANUP ?= true
 SKIP_CREATE_MGMT_CLUSTER ?= false
 
 .PHONY: e2e-tests
@@ -112,9 +113,10 @@ e2e-tests: ## Run e2e tests with capi e2e testing framework
 	docker pull $(REGISTRY)/cluster-api-provider-metal3
 	docker pull $(REGISTRY)/baremetal-operator
 	docker pull $(REGISTRY)/ip-address-manager
-	ginkgo -v -trace -progress -v -tags=e2e --noColor=$(GINKGO_NOCOLOR) ./test/e2e -- \
+	$(ENVSUBST) < $(E2E_CONF_FILE) > $(E2E_CONF_FILE_ENVSUBST) && \
+	time ginkgo -v -trace -progress -v -tags=e2e --noColor=$(GINKGO_NOCOLOR) ./test/e2e -- \
 		-e2e.artifacts-folder="$(ARTIFACTS)" \
-		-e2e.config="$(E2E_CONF_FILE)" \
+		-e2e.config="$(E2E_CONF_FILE_ENVSUBST)" \
 		-e2e.skip-resource-cleanup=$(SKIP_CLEANUP) \
 		-e2e.use-existing-cluster=$(SKIP_CREATE_MGMT_CLUSTER)
 
