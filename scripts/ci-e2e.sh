@@ -57,6 +57,8 @@ source "${REPO_ROOT}/hack/ensure-kubectl.sh"
 # shellcheck source=./hack/ensure-kustomize.sh
 source "${REPO_ROOT}/hack/ensure-kustomize.sh"
 
+# Make sure that any env variables used by the dev-env are also accessible from the e2e test.
+source "${REPO_ROOT}/hack/e2e/config_ubuntu.sh"
 make e2e-tests
 
 pushd ${M3_DEV_ENV_PATH} || exit 1

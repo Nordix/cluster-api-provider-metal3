@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"log"
 
 	"github.com/metal3-io/cluster-api-provider-metal3/api/v1alpha3"
 	. "github.com/onsi/ginkgo"
@@ -23,6 +23,12 @@ import (
 
 const (
 	KubernetesVersion = "KUBERNETES_VERSION"
+	IronicNamespace   = "IRONIC_NAMESPACE"
+	BmoPath           = "BMOPATH"
+	IronicDataDir     = "IRONIC_DATA_DIR"
+	IronicTLSEnable   = "IRONIC_TLS_SETUP"
+	IronicBasicAuth   = "IRONIC_BASIC_AUTH"
+	IronicHost        = "IRONIC_HOST"
 )
 
 // Test suite flags.
@@ -57,7 +63,7 @@ var (
 	bootstrapClusterProxy framework.ClusterProxy
 
 	kubeconfigPath string
-	e2eTestsPath string
+	e2eTestsPath   string
 )
 
 func init() {
@@ -65,7 +71,7 @@ func init() {
 	flag.StringVar(&artifactFolder, "e2e.artifacts-folder", "", "folder where e2e test artifact should be stored")
 	flag.BoolVar(&skipCleanup, "e2e.skip-resource-cleanup", false, "if true, the resource cleanup after tests will be skipped")
 	flag.BoolVar(&useExistingCluster, "e2e.use-existing-cluster", true, "if true, the test uses the current cluster instead of creating a new one (default discovery rules apply)")
-	flag.StringVar(&kubeconfigPath, "e2e.kubeconfig-path", os.Getenv("HOME") + "/.kube/config", "if e2e.use-existing-cluster is true, path to the kubeconfig file")
+	flag.StringVar(&kubeconfigPath, "e2e.kubeconfig-path", os.Getenv("HOME")+"/.kube/config", "if e2e.use-existing-cluster is true, path to the kubeconfig file")
 	e2eTestsPath = getE2eTestsPath()
 }
 
