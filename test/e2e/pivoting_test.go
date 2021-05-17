@@ -2,10 +2,12 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,9 +16,12 @@ import (
 
 	dockerTypes "github.com/docker/docker/api/types"
 	docker "github.com/docker/docker/client"
+	bmo "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
+	capm3 "github.com/metal3-io/cluster-api-provider-metal3/api/v1alpha4"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1alpha4"
 	"sigs.k8s.io/cluster-api/test/e2e/internal/log"
 	framework "sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
@@ -29,6 +34,8 @@ var _ = Describe("Doing Pivoting", func() {
 		specName            = "metal3"
 		namespace           = "metal3"
 		cluster             *clusterv1.Cluster
+		controlplane        *controlplanev1.KubeadmControlPlane
+		machineDeployment   *clusterv1.MachineDeployment
 		clusterName         = "test1"
 		clusterctlLogFolder string
 	)
@@ -72,6 +79,7 @@ var _ = Describe("Doing Pivoting", func() {
 				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
 			})
 			cluster = result.Cluster
+			controlplane = result
 		})
 
 		It("Should successfully do pivoting ", func() {
@@ -167,8 +175,49 @@ var _ = Describe("Doing Pivoting", func() {
 			})
 			Expect(controlPlane).ToNot(BeNil())
 
-			By("PASSED!")
+			By("Check if machines become running.")
+			Eventually(func() error {
+				machines := &clusterv1.MachineList{}
+				if err := targetCluster.GetClient().List(ctx, machines, client.InNamespace(namespace)); err != nil {
+					return err
+				}
+				for _, machine := range machines.Items {
+					if !strings.EqualFold(machine.Status.Phase, "running") { // Case insensitive comparison
+						return errors.New("Machines cannot be in the Running state")
+					}
+				}
+				return nil
+			}, e2eConfig.GetIntervals(specName, "wait-machine-remediation")...).Should(BeNil())
 
+			By("Check if metal3machines become provisioned.")
+			Eventually(func() error {
+				m3Machines := &capm3.Metal3MachineList{}
+				if err := targetCluster.GetClient().List(ctx, m3Machines, client.InNamespace(namespace)); err != nil {
+					return err
+				}
+				for _, m3Machine := range m3Machines.Items {
+					if !m3Machine.Status.Ready { // Case insensitive comparison
+						return errors.New("Metal3Machines cannot be ready")
+					}
+				}
+				return nil
+			}, e2eConfig.GetIntervals(specName, "wait-machine-remediation")...).Should(BeNil())
+
+			By("Check if bmh is in provisioned state")
+			Eventually(func() error {
+				bmoList := &bmo.BareMetalHostList{}
+				if err := targetCluster.GetClient().List(ctx, bmoList, client.InNamespace(namespace)); err != nil {
+					return err
+				}
+				for _, bmo := range bmoList.Items {
+					if !bmo.WasProvisioned() { // Case insensitive comparison
+						return errors.New("BMOs cannot be provisioned")
+					}
+				}
+				return nil
+			}, e2eConfig.GetIntervals(specName, "wait-machine-remediation")...).Should(BeNil())
+
+			By("PASSED!")
 		})
 	})
 })
