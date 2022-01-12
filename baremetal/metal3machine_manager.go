@@ -483,6 +483,7 @@ func (m *MachineManager) Delete(ctx context.Context) error {
 	}
 
 	if host != nil && host.Spec.ConsumerRef != nil {
+		m.Log.Info(fmt.Sprintf("Inside host %v and it is not nil", host.Name))
 		// don't remove the ConsumerRef if it references some other  metal3 machine
 		if !consumerRefMatches(host.Spec.ConsumerRef, m.Metal3Machine) {
 			m.Log.Info("host already associated with another metal3 machine",
@@ -533,9 +534,40 @@ func (m *MachineManager) Delete(ctx context.Context) error {
 			host.Spec.NetworkData = nil
 			bmhUpdated = true
 		}
-		if host.Spec.Online {
+
+		//	turn on/off bmh depending on AutomatedCleaningMode and fastTrack values
+
+		//	Automated Cleaning | Fast Track	| BMH
+		//	disabled			false 		turn off
+		//	disabled			true 		turn off
+		//	metadata			false 		turn off
+		//	metadata 			true 		turn on
+
+		var fastTrack string
+		var ok bool
+		onlineStatus := host.Spec.Online
+
+		//Extract fastTrack value from configMap
+		configMapKey := client.ObjectKey{Name: "capm3-fast-track-cm", Namespace: "capm3-system"}
+		cm, err := getConfigMap(m, context.Background(), configMapKey)
+		if err != nil {
+			return err
+		}
+		fastTrack, ok = cm.Data["fastTrack"]
+		if !ok {
+			fmt.Println("Failed to extract FastTrack from ConfigMap")
+		}
+
+		if host.Spec.AutomatedCleaningMode == "disabled" {
 			host.Spec.Online = false
+		} else if fastTrack == "true" {
+			host.Spec.Online = true
+		} else if fastTrack == "false" {
+			host.Spec.Online = false
+		}
+		if onlineStatus != host.Spec.Online {
 			bmhUpdated = true
+			m.Log.Info("FastTrack values is %v, AutomatedCleaningMode is %v, \nBMH host status set to %v", fastTrack, host.Spec.AutomatedCleaningMode, host.Spec.Online)
 		}
 
 		if bmhUpdated {
@@ -1706,4 +1738,14 @@ func (m *MachineManager) getNodesWithLabel(ctx context.Context, nodeLabel string
 		nodesCount = len(nodes.Items)
 	}
 	return nodes, nodesCount, err
+}
+
+func getConfigMap(m *MachineManager, ctx context.Context, configmapKey client.ObjectKey) (*corev1.ConfigMap, error) {
+	original := &corev1.ConfigMap{}
+
+	if err := m.client.Get(ctx, configmapKey, original); err != nil {
+		return nil, err
+	}
+
+	return original.DeepCopy(), nil
 }
