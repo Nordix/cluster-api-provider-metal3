@@ -20,6 +20,8 @@ function os_check() {
 # metal3-dev-env customization
 export CAPI_VERSION=${CAPI_VERSION:-"v1beta1"}
 export CAPM3_VERSION=${CAPM3_VERSION:-"v1beta1"}
+export UPGRADE_FROM_CAPI_VERSION=${UPGRADE_FROM_CAPI_VERSION:-"v1alpha4"}
+export UPGRADE_FROM_CAPM3_VERSION=${UPGRADE_FROM_CAPM3_VERSION:-"v1alpha5"}
 export NUM_NODES=${NUM_NODES:-"4"}
 
 # needed for variable substitution in templates

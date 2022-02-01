@@ -18,6 +18,15 @@ providers:
 - name: cluster-api
   type: CoreProvider
   versions:
+  - name: v0.4.7
+    value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.4.7/core-components.yaml"
+    type: "url"
+    contract: v1alpha4
+    replacements:
+      - old: --metrics-addr=127.0.0.1:8080
+        new: --metrics-addr=:8080
+    files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
   - name: v1.1.1
     # Use manifest from source files
     value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.1/core-components.yaml"
@@ -31,6 +40,15 @@ providers:
 - name: kubeadm
   type: BootstrapProvider
   versions:
+  - name: v0.4.7 # latest published release in the v1alpha4 series; this is used for v1alpha4 --> v1beta1 clusterctl upgrades test only.
+    value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.4.7/bootstrap-components.yaml"
+    type: "url"
+    contract: v1alpha4
+    replacements:
+      - old: --metrics-addr=127.0.0.1:8080
+        new: --metrics-addr=:8080
+    files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
   - name: v1.1.1
     # Use manifest from source files
     value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.1/bootstrap-components.yaml"
@@ -44,6 +62,15 @@ providers:
 - name: kubeadm
   type: ControlPlaneProvider
   versions:
+  - name: v0.4.7 # latest published release in the v1alpha4 series; this is used for v1alpha4 --> v1beta1 clusterctl upgrades test only.
+    value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.4.7/control-plane-components.yaml"
+    type: "url"
+    contract: v1alpha4
+    replacements:
+      - old: --metrics-addr=127.0.0.1:8080
+        new: --metrics-addr=:8080
+    files:
+      - sourcePath: "../data/shared/v1alpha4/metadata.yaml"
   - name: v1.1.1
     # Use manifest from source files
     value: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.1.1/control-plane-components.yaml"
@@ -57,6 +84,13 @@ providers:
 - name: metal3
   type: InfrastructureProvider
   versions:
+  - name: v0.5.4
+    value: "https://github.com/metal3-io/cluster-api-provider-metal3/releases/download/v0.5.4/infrastructure-components.yaml"
+    type: "url"
+    contract: v1alpha4
+    files:
+    - sourcePath: "../data/capm3/v1alpha5/metadata.yaml"
+      targetName: "metadata.yaml"
   - name: v1.1.0
     value: "file://${HOME}/.cluster-api/overrides/infrastructure-metal3/v1.1.0/infrastructure-components.yaml"
     type: "url"
@@ -72,7 +106,6 @@ providers:
     #   targetName: "cluster-template-ha-centos.yaml"
     - sourcePath: "${PWD}/test/e2e/_out/cluster-template-prow-ha-m3-dev-env.yaml"
       targetName: "cluster-template-ha-m3-dev-env.yaml"
-
 variables:
   KUBERNETES_VERSION: "${KUBERNETES_VERSION}"
   UPGRADED_K8S_VERSION: "${UPGRADED_K8S_VERSION}"
@@ -86,7 +119,9 @@ variables:
   UPGRADED_BMO_IMAGE_TAG: "${UPGRADED_BMO_IMAGE_TAG:-main}"
   CAPIRELEASE: "${CAPIRELEASE}"
   CAPM3RELEASE: "${CAPM3RELEASE}"
-  CONFIG_FILE_PATH: "${HOME}/.cluster-api/overrides/clusterctl.yaml"
+  CAPM3_REL_TO_VERSION: "v1.0.0"
+  CONFIG_FILE_PATH: "${HOME}/.cluster-api/clusterctl.yaml"
+  INIT_WITH_BINARY: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.4.7/clusterctl-{OS}-{ARCH}"
 
 intervals:
   default/wait-controllers: ["3m", "10s"]

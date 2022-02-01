@@ -1,0 +1,5 @@
+APIVersion: infrastructure.cluster.x-k8s.io/v1beta1
+providers:
+- name: metal3
+  type: InfrastructureProvider
+  url: {{ .HOME }}/.cluster-api/overrides/infrastructure-metal3/{{ .CAPM3_REL_TO_VERSION }}/infrastructure-components.yaml
