@@ -91,9 +91,12 @@ providers:
     files:
     - sourcePath: "../data/capm3/v1alpha5/metadata.yaml"
       targetName: "metadata.yaml"
+    - sourcePath: "${PWD}/test/e2e/_out/cluster-template-prow-ha.yaml"
+      targetName: "cluster-template.yaml"
+    - sourcePath: "${PWD}/test/e2e/_out/cluster-template-prow-ha-upgrade-workload.yaml"
+      targetName: "cluster-template-ha-upgrade-workload.yaml"
   - name: v1.1.0
-    value: "file://${HOME}/.cluster-api/overrides/infrastructure-metal3/v1.1.0/infrastructure-components.yaml"
-    type: "url"
+    value: "${PWD}/config/default"
     contract: v1beta1
     files:
     - sourcePath: "${PWD}/metadata.yaml"
@@ -124,7 +127,7 @@ variables:
   INIT_WITH_BINARY: "https://github.com/kubernetes-sigs/cluster-api/releases/download/v0.4.7/clusterctl-{OS}-{ARCH}"
 
 intervals:
-  default/wait-controllers: ["3m", "10s"]
+  default/wait-controllers: ["5m", "10s"]
   default/wait-cluster: ["20m", "30s"] # The second time to check the availibility of the cluster should happen late, so kcp object has time to be created
   default/wait-control-plane: ["30m", "10s"]
   default/wait-worker-nodes: ["30m", "10s"]

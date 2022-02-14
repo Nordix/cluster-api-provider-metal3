@@ -49,34 +49,34 @@ var _ = Describe("Workload cluster creation", func() {
 	Context("Creating a highly available control-plane cluster", func() {
 		It("Should create a cluster with 3 control-plane and 1 worker nodes", func() {
 			By("Creating a high available cluster")
-			controlPlaneMachineCount = int64(*e2eConfig.GetInt32PtrVariable("CONTROL_PLANE_MACHINE_COUNT"))
-			workerMachineCount = int64(*e2eConfig.GetInt32PtrVariable("WORKER_MACHINE_COUNT"))
-			result := &clusterctl.ApplyClusterTemplateAndWaitResult{}
-			clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
-				ClusterProxy: bootstrapClusterProxy,
-				ConfigCluster: clusterctl.ConfigClusterInput{
-					LogFolder:                clusterctlLogFolder,
-					ClusterctlConfigPath:     clusterctlConfigPath,
-					KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
-					InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
-					Flavor:                   "ha" + flavorSuffix,
-					Namespace:                namespace,
-					ClusterName:              clusterName,
-					KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
-					ControlPlaneMachineCount: &controlPlaneMachineCount,
-					WorkerMachineCount:       &workerMachineCount,
-				},
-				CNIManifestPath:              e2eConfig.GetVariable(capi_e2e.CNIPath),
-				WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
-				WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
-				WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
-			}, result)
-			cluster = result.Cluster
-			targetCluster = bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace, clusterName)
-
 			if upgradeTest {
 				upgradeManagementCluster()
 			} else {
+				controlPlaneMachineCount = int64(*e2eConfig.GetInt32PtrVariable("CONTROL_PLANE_MACHINE_COUNT"))
+				workerMachineCount = int64(*e2eConfig.GetInt32PtrVariable("WORKER_MACHINE_COUNT"))
+				result := &clusterctl.ApplyClusterTemplateAndWaitResult{}
+				clusterctl.ApplyClusterTemplateAndWait(ctx, clusterctl.ApplyClusterTemplateAndWaitInput{
+					ClusterProxy: bootstrapClusterProxy,
+					ConfigCluster: clusterctl.ConfigClusterInput{
+						LogFolder:                clusterctlLogFolder,
+						ClusterctlConfigPath:     clusterctlConfigPath,
+						KubeconfigPath:           bootstrapClusterProxy.GetKubeconfigPath(),
+						InfrastructureProvider:   clusterctl.DefaultInfrastructureProvider,
+						Flavor:                   "ha" + flavorSuffix,
+						Namespace:                namespace,
+						ClusterName:              clusterName,
+						KubernetesVersion:        e2eConfig.GetVariable(KubernetesVersion),
+						ControlPlaneMachineCount: &controlPlaneMachineCount,
+						WorkerMachineCount:       &workerMachineCount,
+					},
+					CNIManifestPath:              e2eConfig.GetVariable(capi_e2e.CNIPath),
+					WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
+					WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),
+					WaitForMachineDeployments:    e2eConfig.GetIntervals(specName, "wait-worker-nodes"),
+				}, result)
+				cluster = result.Cluster
+				targetCluster = bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace, clusterName)
+
 				remediation()
 				pivoting()
 				upgradeBMO()

@@ -20,9 +20,26 @@ function os_check() {
 # metal3-dev-env customization
 export CAPI_VERSION=${CAPI_VERSION:-"v1beta1"}
 export CAPM3_VERSION=${CAPM3_VERSION:-"v1beta1"}
-export UPGRADE_FROM_CAPI_VERSION=${UPGRADE_FROM_CAPI_VERSION:-"v1alpha4"}
-export UPGRADE_FROM_CAPM3_VERSION=${UPGRADE_FROM_CAPM3_VERSION:-"v1alpha5"}
 export NUM_NODES=${NUM_NODES:-"4"}
+
+if [[ $UPGRADE_TEST ]]; then
+    export CAPI_VERSION="v1alpha4"
+    export CAPM3_VERSION="v1alpha5"
+fi
+
+# Override project infra vars that point to 
+# the current branch to build capm3 image and crds
+if [[ "${CAPM3_VERSION}" == "v1alpha4" ]]; then
+    export CAPM3BRANCH="release-0.4"
+    unset CAPM3_LOCAL_IMAGE
+    export M3PATH=${M3PATH:-"${HOME}/go/src/github.com/metal3-io"}
+    export CAPM3PATH="${M3PATH}/cluster-api-provider-metal3"
+elif [[ "${CAPM3_VERSION}" == "v1alpha5" ]]; then 
+    export CAPM3BRANCH="release-0.5"
+    unset CAPM3_LOCAL_IMAGE
+    export M3PATH=${M3PATH:-"${HOME}/go/src/github.com/metal3-io"}
+    export CAPM3PATH="${M3PATH}/cluster-api-provider-metal3"
+fi
 
 # needed for variable substitution in templates
 export IMAGE_CHECKSUM_TYPE="md5"
