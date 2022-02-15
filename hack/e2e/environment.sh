@@ -22,7 +22,7 @@ export CAPI_VERSION=${CAPI_VERSION:-"v1beta1"}
 export CAPM3_VERSION=${CAPM3_VERSION:-"v1beta1"}
 export NUM_NODES=${NUM_NODES:-"4"}
 export UPGRADE_TEST=${UPGRADE_TEST:-false}
-if [[ $UPGRADE_TEST ]]; then
+if $UPGRADE_TEST; then
     export CAPI_VERSION="v1alpha4"
     export CAPM3_VERSION="v1alpha5"
 fi

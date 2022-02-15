@@ -1,6 +1,6 @@
-#TODO (Mohammed) replace this remplate by a better way to generate parameterized templates from the end to end (name, replicas ..) 
+#TODO (Mohammed) replace this template by a parametrized one from the end to end (name, replicas ..) 
 # and find a way to parameterize the controlPlaneEndpoint, seems not possible from the e2e framwork.
-# Currently, this template override the changes for the second cluster in upgrade test
+# Currently, this template overrides the changes for the second cluster in upgrade test
 
 apiVersion: cluster.x-k8s.io/v1alpha4
 kind: Cluster

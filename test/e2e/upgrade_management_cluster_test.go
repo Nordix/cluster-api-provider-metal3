@@ -24,6 +24,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/client/config"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
+	framework "sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -256,12 +257,11 @@ func upgradeManagementCluster() {
 	/*-------------------------------*
 	| Upgrade the management cluster |
 	*--------------------------------*/
-	By("Get the management cluster images before upgrading")
-	pods, err := upgradeClusterClientSet.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-	Expect(err).To(BeNil())
-	printImages(pods)
-
 	By("Upgrading providers to the latest version available")
+	By("Get the management cluster images before upgrading")
+	printImages(upgradeClusterProxy)
+
+	Logf("Generate clusterctl file")
 	pwd, err := os.Getwd()
 	Expect(err).To(BeNil())
 	Logf("PWD:", pwd)
@@ -284,7 +284,7 @@ func upgradeManagementCluster() {
 	Expect(err).To(BeNil())
 	clusterctlFile.Close()
 
-	Logf("clusterv1.GroupVersion.Version: %v", clusterv1.GroupVersion.Version)
+	Logf("Upgrade managment cluster to : %v", clusterv1.GroupVersion.Version)
 	clusterctl.UpgradeManagementClusterAndWait(ctx, clusterctl.UpgradeManagementClusterAndWaitInput{
 		ClusterctlConfigPath: e2eConfig.GetVariable("CONFIG_FILE_PATH"),
 		ClusterProxy:         upgradeClusterProxy,
@@ -295,9 +295,21 @@ func upgradeManagementCluster() {
 	By("THE MANAGEMENT CLUSTER WAS SUCCESSFULLY UPGRADED!")
 
 	By("Get the management cluster images after upgrading")
-	pods, err = upgradeClusterClientSet.CoreV1().Pods("").List(ctx, metav1.ListOptions{})
-	Expect(err).To(BeNil())
-	printImages(pods)
+	printImages(upgradeClusterProxy)
+
+	By("Upgrade bootstrap cluster")
+	By("Get the management cluster images before upgrading")
+	printImages(bootstrapClusterProxy)
+
+	Logf("Upgrade bootstrap cluster to : %v", clusterv1.GroupVersion.Version)
+	clusterctl.UpgradeManagementClusterAndWait(ctx, clusterctl.UpgradeManagementClusterAndWaitInput{
+		ClusterctlConfigPath: e2eConfig.GetVariable("CONFIG_FILE_PATH"),
+		ClusterProxy:         bootstrapClusterProxy,
+		Contract:             clusterv1.GroupVersion.Version,
+		LogFolder:            filepath.Join(artifactFolder, "clusters", bootstrapClusterProxy.GetName()),
+	}, e2eConfig.GetIntervals(specName, "wait-controllers")...)
+	By("Get the bootstrap cluster images after upgrading")
+	printImages(bootstrapClusterProxy)
 
 	By("UPGRADE MANAGEMENT CLUSTER PASSED!")
 }
@@ -318,7 +330,9 @@ func downloadToTmpFile(url string) string {
 
 	return tmpFile.Name()
 }
-func printImages(pods *corev1.PodList) {
+func printImages(clusterProxy framework.ClusterProxy) {
+	pods, err := clusterProxy.GetClientSet().CoreV1().Pods("").List(ctx, metav1.ListOptions{})
+	Expect(err).To(BeNil())
 	var images []string
 	for _, pod := range pods.Items {
 		for _, c := range pod.Spec.Containers {
