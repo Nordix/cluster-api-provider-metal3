@@ -92,6 +92,7 @@ func upgradeManagementCluster() {
 	}, e2eConfig.GetIntervals(specName, "wait-worker-nodes")...).Should(Equal(4))
 
 	upgradeClusterProxy := bootstrapClusterProxy.GetWorkloadCluster(ctx, namespace, clusterName)
+	upgradeClusterClient := upgradeClusterProxy.GetClient()
 
 	// Apply CNI
 	cniYaml, err := os.ReadFile(e2eConfig.GetVariable(capi_e2e.CNIPath))
@@ -161,7 +162,7 @@ func upgradeManagementCluster() {
 	}, "5s", "100ms").Should(BeNil(), "Failed to assert bootstrap API server stability")
 	Consistently(func() error {
 		kubeSystem := &corev1.Namespace{}
-		return upgradeClusterProxy.GetClient().Get(ctx, client.ObjectKey{Name: "kube-system"}, kubeSystem)
+		return upgradeClusterClient.Get(ctx, client.ObjectKey{Name: "kube-system"}, kubeSystem)
 	}, "5s", "100ms").Should(BeNil(), "Failed to assert target API server stability")
 	By("Moving the cluster to self hosted")
 
@@ -173,7 +174,7 @@ func upgradeManagementCluster() {
 	By("Check if BMH is in provisioned state")
 	Eventually(func() error {
 		bmhList := &bmo.BareMetalHostList{}
-		if err := upgradeClusterProxy.GetClient().List(ctx, bmhList, client.InNamespace(namespace)); err != nil {
+		if err := upgradeClusterClient.List(ctx, bmhList, client.InNamespace(namespace)); err != nil {
 			return err
 		}
 		for _, bmh := range bmhList.Items {
@@ -191,20 +192,10 @@ func upgradeManagementCluster() {
 	Expect(err).To(BeNil())
 
 	Logf("Waiting for 2 BMHs to be in Available state")
-	Eventually(func(g Gomega) error {
-		Logf("check available VM")
-		upgradeClusterClient := upgradeClusterProxy.GetClient()
-		Logf("get bmh")
+	Eventually(func(g Gomega) {
 		bmhs, err := getAllBmhs(ctx, upgradeClusterClient, namespace, specName)
-		Logf("check error")
-		if err != nil {
-			Logf("Error: %v", err)
-			return err
-		}
-		Logf("expect")
+		g.Expect(err).To(BeNil())
 		g.Expect(filterBmhsByProvisioningState(bmhs, bmo.StateAvailable)).To(HaveLen(2))
-		Logf("return")
-		return nil
 	}, e2eConfig.GetIntervals(specName, "wait-machine-remediation")...).Should(Succeed())
 
 	/*-------------------------------*
@@ -250,7 +241,7 @@ func upgradeManagementCluster() {
 	Eventually(func() (int64, error) {
 		var n int64
 		machineList := &clusterv1old.MachineList{}
-		if err := upgradeClusterProxy.GetClient().List(ctx, machineList, client.InNamespace(namespace), client.MatchingLabels{clusterv1.ClusterLabelName: workloadClusterName}); err == nil {
+		if err := upgradeClusterClient.List(ctx, machineList, client.InNamespace(namespace), client.MatchingLabels{clusterv1.ClusterLabelName: workloadClusterName}); err == nil {
 			for _, machine := range machineList.Items {
 				if strings.EqualFold(machine.Status.Phase, "running") {
 					n++
