@@ -102,6 +102,7 @@ There are multiple ways to setup a development environment:
 
 ## API
 
+
 See the [API Documentation](docs/api.md) for details about the objects used with
 this Cluster API provider. You can also see the [cluster deployment
 workflow](docs/deployment_workflow.md) for the outline of the
