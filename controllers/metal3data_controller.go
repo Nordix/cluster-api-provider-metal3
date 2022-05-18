@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-logr/logr"
 	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
+	bmov1alpha1 "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	"github.com/metal3-io/cluster-api-provider-metal3/baremetal"
 	ipamv1 "github.com/metal3-io/ip-address-manager/api/v1alpha1"
 	"github.com/pkg/errors"
@@ -45,10 +46,11 @@ const (
 
 // Metal3DataReconciler reconciles a Metal3Data object.
 type Metal3DataReconciler struct {
-	Client           client.Client
-	ManagerFactory   baremetal.ManagerFactoryInterface
-	Log              logr.Logger
-	WatchFilterValue string
+	Client                    client.Client
+	ManagerFactory            baremetal.ManagerFactoryInterface
+	Log                       logr.Logger
+	WatchFilterValue          string
+	BMHNameBasedPreallocation bool
 }
 
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
@@ -153,6 +155,10 @@ func (r *Metal3DataReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Ma
 			&source.Kind{Type: &ipamv1.IPClaim{}},
 			handler.EnqueueRequestsFromMapFunc(r.Metal3IPClaimToMetal3Data),
 		).
+		Watches(
+			&source.Kind{Type: &ipamv1.IPClaim{}},
+			handler.EnqueueRequestsFromMapFunc(r.Metal3IPClaimToBaremetalHost),
+		).
 		WithEventFilter(predicates.ResourceNotPausedAndHasFilterLabel(ctrl.LoggerFrom(ctx), r.WatchFilterValue)).
 		Complete(r)
 }
@@ -178,6 +184,34 @@ func (r *Metal3DataReconciler) Metal3IPClaimToMetal3Data(obj client.Object) []ct
 				NamespacedName: types.NamespacedName{
 					Name:      ownerRef.Name,
 					Namespace: m3dc.Namespace,
+				},
+			})
+		}
+	}
+	return requests
+}
+
+// Metal3IPClaimToBaremetalHost will return a reconcile request for a Metal3Data if the event is for a
+// Metal3IPClaim and that Metal3IPClaim references a BaremetalHost.
+func (r *Metal3DataReconciler) Metal3IPClaimToBaremetalHost(obj client.Object) []ctrl.Request {
+	requests := []ctrl.Request{}
+	if m3ipc, ok := obj.(*ipamv1.IPClaim); ok {
+		for _, ownerRef := range m3ipc.OwnerReferences {
+			if ownerRef.Kind != "BaremetalHost" {
+				continue
+			}
+			aGV, err := schema.ParseGroupVersion(ownerRef.APIVersion)
+			if err != nil {
+				r.Log.Error(err, "failed to parse the API version")
+				continue
+			}
+			if aGV.Group != bmov1alpha1.GroupVersion.Group {
+				continue
+			}
+			requests = append(requests, ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      ownerRef.Name,
+					Namespace: m3ipc.Namespace,
 				},
 			})
 		}

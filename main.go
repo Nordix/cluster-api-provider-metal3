@@ -61,6 +61,7 @@ var (
 	healthAddr                  string
 	watchNamespace              string
 	watchFilterValue            string
+	bmhNameBasedPreallocation   = baremetal.BMHNameBasedPreallocation
 )
 
 func init() {
@@ -128,18 +129,25 @@ func main() {
 }
 
 func initFlags(fs *pflag.FlagSet) {
-	flag.StringVar(
+	fs.StringVar(
 		&metricsBindAddr,
 		"metrics-bind-addr",
 		"localhost:8080",
 		"The address the metric endpoint binds to.",
 	)
 
-	flag.BoolVar(
+	fs.BoolVar(
 		&enableLeaderElection,
 		"leader-elect",
 		false,
 		"Enable leader election for controller manager. Enabling this will ensure there is only one active controller manager.",
+	)
+
+	fs.BoolVar(
+		&bmhNameBasedPreallocation,
+		"bmhNameBasedPreallocation",
+		false,
+		"Enable PreAllocation field to use Metal3IPClaim name structured with BaremetalHost and M3IPPool names",
 	)
 
 	fs.DurationVar(
@@ -163,7 +171,7 @@ func initFlags(fs *pflag.FlagSet) {
 		"Duration the LeaderElector clients should wait between tries of actions (duration string)",
 	)
 
-	flag.StringVar(
+	fs.StringVar(
 		&watchNamespace,
 		"namespace",
 		"",
@@ -177,28 +185,28 @@ func initFlags(fs *pflag.FlagSet) {
 		fmt.Sprintf("Label value that the controller watches to reconcile cluster-api objects. Label key is always %s. If unspecified, the controller watches for all cluster-api objects.", clusterv1.WatchLabel),
 	)
 
-	flag.DurationVar(
+	fs.DurationVar(
 		&syncPeriod,
 		"sync-period",
 		10*time.Minute,
 		"The minimum interval at which watched resources are reconciled (e.g. 15m)",
 	)
 
-	flag.IntVar(
+	fs.IntVar(
 		&webhookPort,
 		"webhook-port",
 		9443,
 		"Webhook Server port",
 	)
 
-	flag.StringVar(
+	fs.StringVar(
 		&webhookCertDir,
 		"webhook-cert-dir",
 		"/tmp/k8s-webhook-server/serving-certs/",
 		"Webhook cert dir, only used when webhook-port is specified.",
 	)
 
-	flag.StringVar(
+	fs.StringVar(
 		&healthAddr,
 		"health-addr",
 		":9440",
@@ -280,6 +288,7 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 		ManagerFactory:   baremetal.NewManagerFactory(mgr.GetClient()),
 		Log:              ctrl.Log.WithName("controllers").WithName("Metal3Data"),
 		WatchFilterValue: watchFilterValue,
+		BMHNameBasedPreallocation: bmhNameBasedPreallocation,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Metal3DataReconciler")
 		os.Exit(1)
