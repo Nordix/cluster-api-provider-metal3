@@ -146,7 +146,7 @@ func initFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(
 		&bmhNameBasedPreallocation,
 		"bmhNameBasedPreallocation",
-		false,
+		true,
 		"Enable PreAllocation field to use Metal3IPClaim name structured with BaremetalHost and M3IPPool names",
 	)
 
@@ -288,7 +288,7 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 		ManagerFactory:   baremetal.NewManagerFactory(mgr.GetClient()),
 		Log:              ctrl.Log.WithName("controllers").WithName("Metal3Data"),
 		WatchFilterValue: watchFilterValue,
-		BMHNameBasedPreallocation: bmhNameBasedPreallocation,
+		// BMHNameBasedPreallocation: bmhNameBasedPreallocation,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Metal3DataReconciler")
 		os.Exit(1)
