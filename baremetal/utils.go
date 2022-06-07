@@ -21,8 +21,9 @@ import (
 	"strings"
 
 	// comment for go-lint.
-	"github.com/go-logr/logr"
+	"fmt"
 
+	"github.com/go-logr/logr"
 	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -273,32 +274,44 @@ func getM3Machine(ctx context.Context, cl client.Client, mLog logr.Logger,
 		Name:      name,
 		Namespace: namespace,
 	}
+	fmt.Println("================inside getM3Machine function, BEFORE TRYING TO GET tmpM3Machine")
 	err := cl.Get(ctx, key, tmpM3Machine)
 	if err != nil {
+		fmt.Println("inside getM3Machine func, err is not nil when client get ")
 		if apierrors.IsNotFound(err) {
+			fmt.Println("inside getM3Machine func, err is apierrors.IsNotFound ")
 			if requeueifNotFound {
+				fmt.Println("inside getM3Machine func, err is requeueifNotFound ")
 				return nil, &RequeueAfterError{RequeueAfter: requeueAfter}
 			}
+			fmt.Println("returm m3m nil err nil ")
 			return nil, nil
 		}
+		fmt.Println("returm m3m nil err")
+		fmt.Println(err)
 		return nil, err
 	}
 
 	if dataTemplate == nil {
+		fmt.Println("dataTemplate nil , return m3m")
 		return tmpM3Machine, nil
 	}
 
 	// Verify that the Metal3Machine fulfills the conditions.
 	if tmpM3Machine.Spec.DataTemplate == nil {
+		fmt.Println("tmpM3Machine.Spec.DataTemplate nil , return m3m nil err nil")
 		return nil, nil
 	}
 	if tmpM3Machine.Spec.DataTemplate.Name != dataTemplate.Name {
+		fmt.Println("tmpM3Machine.Spec.DataTemplate.Name is not  dataTemplate.Name , return m3m nil err nil")
 		return nil, nil
 	}
 	if tmpM3Machine.Spec.DataTemplate.Namespace != "" &&
 		tmpM3Machine.Spec.DataTemplate.Namespace != dataTemplate.Namespace {
+		fmt.Println("tmpM3Machine.Spec.DataTemplate.Namespace is not empty and same is not  dataTemplate.Namespace , return m3m nil err nil")
 		return nil, nil
 	}
+	fmt.Println("return m3m, err nil")
 	return tmpM3Machine, nil
 }
 

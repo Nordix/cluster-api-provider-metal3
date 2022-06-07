@@ -227,13 +227,19 @@ func (m *DataTemplateManager) updateData(ctx context.Context,
 	dataClaim.Status.ErrorMessage = nil
 
 	if dataClaim.DeletionTimestamp.IsZero() {
+		fmt.Println("===inside updateData in m3dt manager, dataClaim.DeletionTimestamp.IsZero===")
 		indexes, err = m.createData(ctx, dataClaim, indexes)
 		if err != nil {
+			fmt.Println("===inside updateData in m3dt manager, createData data dataclaim err is not nil ===")
+			fmt.Println(err, indexes)
 			return indexes, err
 		}
 	} else {
+		fmt.Println("===inside updateData in m3dt manager, !!!!!!!!!!!!!!DELETING DATACLAIM!!!!!!!!!!!! ===")
 		indexes, err = m.deleteData(ctx, dataClaim, indexes)
 		if err != nil {
+			fmt.Println("===inside updateData in m3dt manager, deleting data dataclaim err is not nil ===")
+			fmt.Println(err, indexes)
 			return indexes, err
 		}
 	}
@@ -268,6 +274,7 @@ func (m *DataTemplateManager) createData(ctx context.Context,
 	m3mUID := types.UID("")
 	m3mName := ""
 	for _, ownerRef := range dataClaim.OwnerReferences {
+		fmt.Println("inside createData, checking ownerref on dataclaim ownerrefs ")
 		aGV, err := schema.ParseGroupVersion(ownerRef.APIVersion)
 		if err != nil {
 			return indexes, err
@@ -382,29 +389,41 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 
 	dataClaimIndex, ok := m.DataTemplate.Status.Indexes[dataClaim.Name]
 	if ok {
+		fmt.Println("inside deleteData ok, get Metal3Data now")
 		// Try to get the Metal3Data. if it succeeds, delete it
 		tmpM3Data := &infrav1.Metal3Data{}
 
 		if m.DataTemplate.Spec.TemplateReference != "" {
+			fmt.Println("inside m.DataTemplate.Spec.TemplateReference != empty")
 			dataName = m.DataTemplate.Spec.TemplateReference + "-" + strconv.Itoa(dataClaimIndex)
+			fmt.Println(dataName)
 		} else {
+			fmt.Println("inside m.DataTemplate.Spec.TemplateReference is empty")
 			dataName = m.DataTemplate.Name + "-" + strconv.Itoa(dataClaimIndex)
+			fmt.Println(dataName)
 		}
 
 		key := client.ObjectKey{
 			Name:      dataName,
 			Namespace: m.DataTemplate.Namespace,
 		}
+		fmt.Println("Get tmpM3Data")
+		fmt.Println(tmpM3Data.Name)
 		err := m.client.Get(ctx, key, tmpM3Data)
 		if err != nil && !apierrors.IsNotFound(err) {
+			fmt.Println("Get tmpM3Data, but err is not nill and error is not api error is not found, returnnig indexes, err")
 			dataClaim.Status.ErrorMessage = pointer.StringPtr("Failed to get associated Metal3Data object")
+			fmt.Println(indexes, err)
 			return indexes, err
 		} else if err == nil {
+			fmt.Println("Get tmpM3Data, err is nill, delete tmpM3Data")
 			// Delete the secret with metadata
 			fmt.Println(tmpM3Data.Name)
 			err = m.client.Delete(ctx, tmpM3Data)
 			if err != nil && !apierrors.IsNotFound(err) {
+				fmt.Println("delete tmpM3Data err is not nill and error is not api error is not found")
 				dataClaim.Status.ErrorMessage = pointer.StringPtr("Failed to delete associated Metal3Data object")
+				fmt.Println(indexes, err)
 				return indexes, err
 			}
 		}
@@ -417,7 +436,12 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 	m.Log.Info("Deleted Claim", "Metal3DataClaim", dataClaim.Name)
 
 	if ok {
+		fmt.Println("after deleted claim, inside ok is true")
+		fmt.Println(m.DataTemplate.Status.Indexes, dataClaim.Name)
+		fmt.Println("DELETE m.DataTemplate.Status.Indexes, dataClaim.Name")
 		delete(m.DataTemplate.Status.Indexes, dataClaim.Name)
+		fmt.Println(indexes, dataClaimIndex)
+		fmt.Println("DELETE indexes, dataClaimIndex")
 		delete(indexes, dataClaimIndex)
 	}
 	m.updateStatusTimestamp()

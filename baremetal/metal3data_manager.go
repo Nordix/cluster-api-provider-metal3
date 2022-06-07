@@ -47,6 +47,8 @@ const (
 	capimachine = "machine"
 )
 
+var BMHNameBasedPreallocation = false
+
 // DataManagerInterface is an interface for a DataManager.
 type DataManagerInterface interface {
 	SetFinalizer()
@@ -88,6 +90,58 @@ func (m *DataManager) UnsetFinalizer() {
 	m.Data.Finalizers = Filter(m.Data.Finalizers,
 		infrav1.DataFinalizer,
 	)
+}
+
+func createM3IPClaim(name, namespace, poolName string, baremetalhost *bmov1alpha1.BareMetalHost, data *infrav1.Metal3Data) *ipamv1.IPClaim {
+	var ObjMeta *metav1.ObjectMeta
+	var claimSpec *ipamv1.IPClaimSpec
+	if BMHNameBasedPreallocation {
+		ObjMeta = &metav1.ObjectMeta{
+			Name:      name + "-" + poolName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Controller: pointer.BoolPtr(true),
+					APIVersion: baremetalhost.APIVersion,
+					Kind:       baremetalhost.Kind,
+					Name:       baremetalhost.Name,
+					UID:        baremetalhost.UID,
+				},
+			},
+			Labels: baremetalhost.Labels,
+		}
+		claimSpec = &ipamv1.IPClaimSpec{
+			Pool: corev1.ObjectReference{
+				Name:      poolName,
+				Namespace: baremetalhost.Namespace,
+			},
+		}
+	} else {
+		ObjMeta = &metav1.ObjectMeta{
+			Name:      name + "-" + poolName,
+			Namespace: namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					Controller: pointer.BoolPtr(true),
+					APIVersion: data.APIVersion,
+					Kind:       data.Kind,
+					Name:       data.Name,
+					UID:        data.UID,
+				},
+			},
+			Labels: data.Labels,
+		}
+		claimSpec = &ipamv1.IPClaimSpec{
+			Pool: corev1.ObjectReference{
+				Name:      poolName,
+				Namespace: data.Namespace,
+			},
+		}
+	}
+	return &ipamv1.IPClaim{
+		ObjectMeta: *ObjMeta,
+		Spec:       *claimSpec,
+	}
 }
 
 // clearError clears error message from Metal3Data status.
@@ -205,13 +259,6 @@ func (m *DataManager) createSecrets(ctx context.Context) error {
 		return nil
 	}
 
-	// Fetch all the Metal3IPPools and set the OwnerReference. Check if the
-	// IP address has been allocated, if so, fetch the address, gateway and prefix.
-	poolAddresses, err := m.getAddressesFromPool(ctx, *m3dt)
-	if err != nil {
-		return err
-	}
-
 	// Fetch the Machine.
 	capiMachine, err := util.GetOwnerMachine(ctx, m.client, m3m.ObjectMeta)
 
@@ -234,15 +281,34 @@ func (m *DataManager) createSecrets(ctx context.Context) error {
 	}
 	m.Log.Info("Fetched BMH")
 
-	// Create the owner Ref for the secret
-	ownerRefs := []metav1.OwnerReference{
-		{
-			Controller: pointer.BoolPtr(true),
-			APIVersion: m.Data.APIVersion,
-			Kind:       m.Data.Kind,
-			Name:       m.Data.Name,
-			UID:        m.Data.UID,
-		},
+	// Fetch all the Metal3IPPools and set the OwnerReference. Check if the
+	// IP address has been allocated, if so, fetch the address, gateway and prefix.
+	poolAddresses, err := m.getAddressesFromPool(ctx, *m3dt)
+	if err != nil {
+		return err
+	}
+	var ownerRefs []metav1.OwnerReference
+	if BMHNameBasedPreallocation {
+		// Create the owner Ref for the secret using BMH name
+		ownerRefs = []metav1.OwnerReference{
+			{
+				APIVersion: bmh.APIVersion,
+				Kind:       bmh.Kind,
+				Name:       bmh.Name,
+				UID:        bmh.UID,
+			},
+		}
+	} else {
+		// Create the owner Ref for the secret using Data name
+		ownerRefs = []metav1.OwnerReference{
+			{
+				Controller: pointer.BoolPtr(true),
+				APIVersion: m.Data.APIVersion,
+				Kind:       m.Data.Kind,
+				Name:       m.Data.Name,
+				UID:        m.Data.UID,
+			},
+		}
 	}
 
 	// The MetaData secret must be created
@@ -674,42 +740,107 @@ func (m *DataManager) getAddressFromPool(ctx context.Context, poolName string,
 		}
 	}
 	addresses[poolName] = addressFromPool{}
-
-	ipClaim, err := fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName,
-		m.Data.Namespace,
+	fmt.Println("===inside getAddressFromPool ===")
+	if m.Data.Spec.Template.Name == "" {
+		return addresses, false, nil
+	}
+	if m.Data.Spec.Template.Namespace == "" {
+		m.Data.Spec.Template.Namespace = m.Data.Namespace
+	}
+	fmt.Println("===inside getAddressFromPool FETCHING DataTemplate ===")
+	// Fetch the Metal3DataTemplate object to get the templates
+	m3dt, err := fetchM3DataTemplate(ctx, &m.Data.Spec.Template, m.client,
+		m.Log, m.Data.Labels[clusterv1.ClusterLabelName],
 	)
 	if err != nil {
+		fmt.Println("===inside getAddressFromPool, err is not nil after fetchM3DataTemplate ")
+		fmt.Println(err)
+		return addresses, false, err
+	}
+	if m3dt == nil {
+		fmt.Println("===inside getAddressFromPool, m3dt is nil after fetchM3DataTemplate ")
+		return addresses, false, nil
+	}
+	m.Log.Info("Fetched Metal3DataTemplate")
+	fmt.Println(m3dt.Name)
+
+	// Fetch the Metal3Machine, to get the related info
+	fmt.Println("===inside getAddressFromPool FETCHING getM3Machine ===")
+	m3m, err := m.getM3Machine(ctx, m3dt)
+	if err != nil {
+		fmt.Println("===inside getAddressFromPool, err is not nil after getM3Machine ")
+		fmt.Println(err)
+		return nil, false, err
+	}
+	if m3m == nil {
+		fmt.Println("===inside getAddressFromPool, m3m is nil after getM3Machine ")
+		return nil, false, err
+	}
+	m.Log.Info("Fetched Metal3Machine")
+	fmt.Println(m3m.Name)
+
+	// Fetch the BMH associated with the M3M
+	fmt.Println("===inside getAddressFromPool calling getHost ===")
+	bmh, err := getHost(ctx, m3m, m.client, m.Log)
+	if err != nil {
+		fmt.Println("===inside getAddressFromPool, err is not nil after getHost ")
+		fmt.Println(err)
+		return nil, false, err
+	}
+	if bmh == nil {
+		fmt.Println("===inside getAddressFromPool, bmh is nil after getHost ")
+		return nil, false, &RequeueAfterError{RequeueAfter: requeueAfter}
+	}
+	m.Log.Info("Fetched BMH")
+	fmt.Println(bmh.Name)
+	fmt.Println("inside getAddressFromPool WILL TRY FETCHING IPCLAIM WITH BMH NAME FIRST TIME")
+	ipClaim, err := fetchM3IPClaim(ctx, m.client, m.Log, bmh.Name+"-"+poolName, bmh.Namespace)
+	if err != nil {
+		fmt.Println("===inside getAddressFromPool, err is not nil when fetchM3IPClaim with bmh name ===")
 		if ok := errors.As(err, &hasRequeueAfterError); !ok {
+			fmt.Println("===inside getAddressFromPool, fetchM3IPClaim with bmh name ok is not ok when hasRequeueAfterError ===")
+			fmt.Println(addresses, err)
 			return addresses, false, err
 		}
-		// Create the claim
-		ipClaim = &ipamv1.IPClaim{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      m.Data.Name + "-" + poolName,
-				Namespace: m.Data.Namespace,
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: m.Data.APIVersion,
-						Kind:       m.Data.Kind,
-						Name:       m.Data.Name,
-						UID:        m.Data.UID,
-						Controller: pointer.BoolPtr(true),
-					},
-				},
-				Labels: m.Data.Labels,
-			},
-			Spec: ipamv1.IPClaimSpec{
-				Pool: corev1.ObjectReference{
-					Name:      poolName,
-					Namespace: m.Data.Namespace,
-				},
-			},
-		}
-
-		err = createObject(ctx, m.client, ipClaim)
+		fmt.Println("WILL TRY FETCHING IPCLAIM WITH DATA NAME THIS TIME")
+		ipClaim, err = fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName, m.Data.Namespace)
 		if err != nil {
+			fmt.Println("===inside getAddressFromPool, err is not nil when fetchM3IPClaim with data name ===")
+			fmt.Println(err)
 			if ok := errors.As(err, &hasRequeueAfterError); !ok {
+				fmt.Println("===inside getAddressFromPool, fetchM3IPClaim with data name ok is not ok when hasRequeueAfterError ===")
+				fmt.Println(addresses, err)
 				return addresses, false, err
+			}
+			fmt.Println("NO IPCLAIMS EXIST, CREATING ONE BASED ON THE BMHNameBasedPreallocation")
+			if BMHNameBasedPreallocation {
+				fmt.Println("===inside getAddressFromPool, BMHNameBasedPreallocation IS TRUE, creating ipclaim with bmh name ===")
+				fmt.Println(bmh.Name+"-"+poolName, bmh.Namespace)
+				// Create the claim
+				err = createObject(ctx, m.client, createM3IPClaim(bmh.Name, bmh.Namespace, poolName, bmh, m.Data))
+				if err != nil {
+					fmt.Println("===inside getAddressFromPool, createM3IPClaim with bmh name err is not nil ===")
+					fmt.Println(err)
+					if ok := errors.As(err, &hasRequeueAfterError); !ok {
+						fmt.Println("inside  getAddressFromPool createM3IPClaim with bmh name ok is not ok while hasRequeueAfterError ")
+						fmt.Println(addresses, err)
+						return addresses, false, err
+					}
+				}
+			} else {
+				// Create the claim
+				fmt.Println("===inside getAddressFromPool, BMHNameBasedPreallocation IS FALSE, creating ipclaim with data name ===")
+				fmt.Println(m.Data.Name+"-"+poolName, m.Data.Namespace)
+				err = createObject(ctx, m.client, createM3IPClaim(m.Data.Name, m.Data.Namespace, poolName, bmh, m.Data))
+				if err != nil {
+					fmt.Println("===inside getAddressFromPool, createM3IPClaim with data name err is not nil ===")
+					fmt.Println(err)
+					if ok := errors.As(err, &hasRequeueAfterError); !ok {
+						fmt.Println("inside  getAddressFromPool createM3IPClaim with data name ok is not ok while hasRequeueAfterError ")
+						fmt.Println(addresses, err)
+						return addresses, false, err
+					}
+				}
 			}
 		}
 	}
@@ -728,12 +859,20 @@ func (m *DataManager) getAddressFromPool(ctx context.Context, poolName string,
 
 	// get Metal3IPAddress object
 	ipAddress := &ipamv1.IPAddress{}
-	addressNamespacedName := types.NamespacedName{
-		Name:      ipClaim.Status.Address.Name,
-		Namespace: m.Data.Namespace,
+	var addressNamespacedName *types.NamespacedName
+	if BMHNameBasedPreallocation {
+		addressNamespacedName = &types.NamespacedName{
+			Name:      ipClaim.Status.Address.Name,
+			Namespace: bmh.Namespace,
+		}
+	} else {
+		addressNamespacedName = &types.NamespacedName{
+			Name:      ipClaim.Status.Address.Name,
+			Namespace: m.Data.Namespace,
+		}
 	}
 
-	if err := m.client.Get(ctx, addressNamespacedName, ipAddress); err != nil {
+	if err := m.client.Get(ctx, *addressNamespacedName, ipAddress); err != nil {
 		if apierrors.IsNotFound(err) {
 			return addresses, true, nil
 		}
@@ -768,20 +907,106 @@ func (m *DataManager) releaseAddressFromPool(ctx context.Context, poolName strin
 	}
 	addresses[poolName] = false
 
-	ipClaim, err := fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName,
-		m.Data.Namespace,
+	fmt.Println("===inside releaseAddressFromPool ===")
+
+	if m.Data.Spec.Template.Name == "" {
+		return addresses, false, nil
+	}
+	if m.Data.Spec.Template.Namespace == "" {
+		m.Data.Spec.Template.Namespace = m.Data.Namespace
+	}
+	// Fetch the Metal3DataTemplate object to get the templates
+	fmt.Println("===inside releaseAddressFromPool FETCHING DataTemplate ===")
+	m3dt, err := fetchM3DataTemplate(ctx, &m.Data.Spec.Template, m.client,
+		m.Log, m.Data.Labels[clusterv1.ClusterLabelName],
 	)
 	if err != nil {
+		fmt.Println("===inside releaseAddressFromPool, err is not nil after fetchM3DataTemplate ")
+		fmt.Println(err)
+		return addresses, false, err
+	}
+	if m3dt == nil {
+		fmt.Println("===inside releaseAddressFromPool, m3dt is nil after fetchM3DataTemplate ")
+		return addresses, false, nil
+	}
+	m.Log.Info("Fetched Metal3DataTemplate")
+	fmt.Println(m3dt.Name)
+
+	// Fetch the Metal3Machine, to get the related info
+	fmt.Println("===inside releaseAddressFromPool FETCHING m3m ===")
+	m3m, err := m.getM3Machine(ctx, m3dt)
+	if err != nil {
+		fmt.Println("===inside releaseAddressFromPool, err is not nil after getM3Machine ")
+		fmt.Println(err)
+		return nil, false, err
+	}
+	if m3m == nil {
+		fmt.Println("===inside releaseAddressFromPool, m3m is nil after getM3Machine ")
+		return nil, false, err
+	}
+	m.Log.Info("Fetched Metal3Machine")
+	fmt.Println(m3m.Name)
+
+	// Fetch the BMH associated with the M3M
+	fmt.Println("===inside releaseAddressFromPool calling getHost ===")
+	bmh, err := getHost(ctx, m3m, m.client, m.Log)
+	if err != nil {
+		fmt.Println("===inside releaseAddressFromPool, err is not nil after getHost ")
+		fmt.Println(err)
+		return nil, false, err
+	}
+	if bmh == nil {
+		fmt.Println("===inside releaseAddressFromPool, bmh is nil after getHost ")
+		return nil, false, &RequeueAfterError{RequeueAfter: requeueAfter}
+	}
+	m.Log.Info("Fetched BMH")
+	fmt.Println(bmh.Name)
+	fmt.Println("inside releaseAddressFromPool WILL TRY FETCHING IPCLAIM WITH BMH NAME FIRST TIME")
+	ipClaim, err := fetchM3IPClaim(ctx, m.client, m.Log, bmh.Name+"-"+poolName,
+		bmh.Namespace,
+	)
+	if err != nil {
+		fmt.Println("===inside releaseAddressFromPool, err is not nil when fetchM3IPClaim with bmh name ===")
 		if ok := errors.As(err, &hasRequeueAfterError); !ok {
+			fmt.Println("===inside releaseAddressFromPool, fetchM3IPClaim with bmh name ok is not ok when hasRequeueAfterError ===")
+			fmt.Println(addresses, err)
 			return addresses, false, err
 		}
+		fmt.Println("===inside releaseAddressFromPool, outside fetchM3IPClaim with bmh name ok is not ok when hasRequeueAfterError ===")
 		addresses[poolName] = true
 		return addresses, false, nil
 	}
-
+	fmt.Println("inside releaseAddressFromPool WILL TRY DELETING IPCLAIM WITH BMH NAME FIRST TIME")
+	fmt.Println("!!!!!!!!!!11IPCLAIM TO BE DELETED IS!!!!!!!!!!!!!!!!!!")
+	fmt.Println(ipClaim)
 	err = deleteObject(ctx, m.client, ipClaim)
 	if err != nil {
+		fmt.Println("inside releaseAddressFromPool ERR IS NOT NILL WHEN TRY DELETING IPCLAIM WITH BMH NAME FIRST TIME")
+		fmt.Println(err)
 		return addresses, false, err
+	}
+
+	if !BMHNameBasedPreallocation {
+		fmt.Println("inside releaseAddressFromPool BMHNameBasedPreallocation is FALSE WILL TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
+		ipClaim, err = fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName, m.Data.Namespace)
+		if err != nil {
+			fmt.Println("===inside releaseAddressFromPool, err is not nil when fetchM3IPClaim with DATA name ===")
+			if ok := errors.As(err, &hasRequeueAfterError); !ok {
+				fmt.Println("===inside releaseAddressFromPool, fetchM3IPClaim with DATA name ok is not ok when hasRequeueAfterError ===")
+				fmt.Println(addresses, err)
+				return addresses, false, err
+			}
+			fmt.Println("===inside releaseAddressFromPool, outside fetchM3IPClaim with DATA name ok is not ok when hasRequeueAfterError ===")
+			addresses[poolName] = true
+			return addresses, false, nil
+		}
+		fmt.Println("inside releaseAddressFromPool WILL TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
+		err = deleteObject(ctx, m.client, ipClaim)
+		if err != nil {
+			fmt.Println("inside releaseAddressFromPool ERR IS NOT NILL WHEN TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
+			fmt.Println(err)
+			return addresses, false, err
+		}
 	}
 
 	addresses[poolName] = true
@@ -1245,6 +1470,7 @@ func getBMHMacByName(name string, bmh *bmov1alpha1.BareMetalHost) (string, error
 
 func (m *DataManager) getM3Machine(ctx context.Context, m3dt *infrav1.Metal3DataTemplate) (*infrav1.Metal3Machine, error) {
 	if m.Data.Spec.Claim.Name == "" {
+		fmt.Println("inside  m.Data.Spec.Claim.Name emptyl ")
 		return nil, errors.New("Claim name not set")
 	}
 
@@ -1253,32 +1479,45 @@ func (m *DataManager) getM3Machine(ctx context.Context, m3dt *infrav1.Metal3Data
 		Name:      m.Data.Spec.Claim.Name,
 		Namespace: m.Data.Namespace,
 	}
-
+	fmt.Println("================inside getM3Machine method, BEFORE TRYING TO GET capm3DataClaim")
+	fmt.Println(capm3DataClaim, claimNamespacedName)
 	if err := m.client.Get(ctx, claimNamespacedName, capm3DataClaim); err != nil {
+		fmt.Println("inside getM3Machine method, GET capm3DataClaim err is not nil, printing error below")
+		fmt.Println(err)
 		if apierrors.IsNotFound(err) {
+			fmt.Println("inside getM3Machine, GET capm3DataClaim IS NOT FOUND ERROR, REQUEUEING")
 			return nil, &RequeueAfterError{RequeueAfter: requeueAfter}
 		}
+		fmt.Println("inside getM3Machine, GET capm3DataClaim err is not nil but not is not found err, returning m3m nil and err")
+		fmt.Println(err)
 		return nil, err
 	}
 
 	metal3MachineName := ""
 	for _, ownerRef := range capm3DataClaim.OwnerReferences {
+		fmt.Println("inside  getM3Machine method for loop")
+		fmt.Println(capm3DataClaim)
 		oGV, err := schema.ParseGroupVersion(ownerRef.APIVersion)
 		if err != nil {
+			fmt.Println("inside  getM3Machine method for loop oGV error")
 			return nil, err
 		}
 		// not matching on UID since when pivoting it might change
 		// Not matching on API version as this might change
 		if ownerRef.Kind == "Metal3Machine" &&
 			oGV.Group == infrav1.GroupVersion.Group {
+			fmt.Println("ownerref kind is m3m and ogv is infra group")
 			metal3MachineName = ownerRef.Name
+			fmt.Println(metal3MachineName)
 			break
 		}
 	}
 	if metal3MachineName == "" {
+		fmt.Println("m3m name is emptyy")
 		return nil, errors.New("Metal3Machine not found in owner references")
 	}
-
+	fmt.Println("inside getM3Machine method, calling now getM3Machine method with metal3MachineName and m3dt passed")
+	fmt.Println(metal3MachineName, m.Data.Namespace, m3dt)
 	return getM3Machine(ctx, m.client, m.Log,
 		metal3MachineName, m.Data.Namespace, m3dt, true,
 	)
@@ -1288,18 +1527,24 @@ func fetchM3IPClaim(ctx context.Context, cl client.Client, mLog logr.Logger,
 	name, namespace string,
 ) (*ipamv1.IPClaim, error) {
 	// Fetch the Metal3Data
+	fmt.Println("===Inside fetchM3IPClaim===")
 	metal3IPClaim := &ipamv1.IPClaim{}
 	metal3ClaimName := types.NamespacedName{
 		Namespace: namespace,
 		Name:      name,
 	}
 	if err := cl.Get(ctx, metal3ClaimName, metal3IPClaim); err != nil {
+		fmt.Println("===Inside fetchM3IPClaim get err is not nil===")
 		if apierrors.IsNotFound(err) {
+			fmt.Println(err)
+			fmt.Println("===Inside fetchM3IPClaim get api error is not found===")
 			mLog.Info("Address claim not found, requeuing")
 			return nil, &RequeueAfterError{RequeueAfter: requeueAfter}
 		}
 		err := errors.Wrap(err, "Failed to get address claim")
 		return nil, err
 	}
+	fmt.Println("===returing metal3IPClaim from fetchM3IPClaim===")
+	fmt.Println(metal3IPClaim)
 	return metal3IPClaim, nil
 }
