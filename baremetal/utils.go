@@ -274,10 +274,12 @@ func getM3Machine(ctx context.Context, cl client.Client, mLog logr.Logger,
 		Name:      name,
 		Namespace: namespace,
 	}
+	fmt.Println(key, name, namespace)
 	fmt.Println("================inside getM3Machine function, BEFORE TRYING TO GET tmpM3Machine")
 	err := cl.Get(ctx, key, tmpM3Machine)
 	if err != nil {
-		fmt.Println("inside getM3Machine func, err is not nil when client get ")
+		fmt.Println("inside getM3Machine func, err is not nil when client get, err is")
+		fmt.Println(err)
 		if apierrors.IsNotFound(err) {
 			fmt.Println("inside getM3Machine func, err is apierrors.IsNotFound ")
 			if requeueifNotFound {
