@@ -962,9 +962,16 @@ func (m *DataManager) releaseAddressFromPool(ctx context.Context, poolName strin
 	m.Log.Info("Fetched BMH")
 	fmt.Println(bmh.Name)
 	fmt.Println("inside releaseAddressFromPool WILL TRY FETCHING IPCLAIM WITH BMH NAME FIRST TIME")
-	ipClaim, err := fetchM3IPClaim(ctx, m.client, m.Log, bmh.Name+"-"+poolName,
-		bmh.Namespace,
-	)
+	var ipClaim *ipamv1.IPClaim
+	if BMHNameBasedPreallocation {
+		fmt.Println("InsidereleaseAddressFromPool and  BMHNameBasedPreallocation is true")
+		fmt.Println(bmh.Name+"-"+poolName, bmh.Namespace)
+		ipClaim, err = fetchM3IPClaim(ctx, m.client, m.Log, bmh.Name+"-"+poolName, bmh.Namespace)
+	} else {
+		fmt.Println("InsidereleaseAddressFromPool and  BMHNameBasedPreallocation is false")
+		fmt.Println(m.Data.Name+"-"+poolName, m.Data.Namespace)
+		ipClaim, err = fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName, m.Data.Namespace)
+	}
 	if err != nil {
 		fmt.Println("===inside releaseAddressFromPool, err is not nil when fetchM3IPClaim with bmh name ===")
 		if ok := errors.As(err, &hasRequeueAfterError); !ok {
@@ -985,30 +992,6 @@ func (m *DataManager) releaseAddressFromPool(ctx context.Context, poolName strin
 		fmt.Println(err)
 		return addresses, false, err
 	}
-
-	if !BMHNameBasedPreallocation {
-		fmt.Println("inside releaseAddressFromPool BMHNameBasedPreallocation is FALSE WILL TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
-		ipClaim, err = fetchM3IPClaim(ctx, m.client, m.Log, m.Data.Name+"-"+poolName, m.Data.Namespace)
-		if err != nil {
-			fmt.Println("===inside releaseAddressFromPool, err is not nil when fetchM3IPClaim with DATA name ===")
-			if ok := errors.As(err, &hasRequeueAfterError); !ok {
-				fmt.Println("===inside releaseAddressFromPool, fetchM3IPClaim with DATA name ok is not ok when hasRequeueAfterError ===")
-				fmt.Println(addresses, err)
-				return addresses, false, err
-			}
-			fmt.Println("===inside releaseAddressFromPool, outside fetchM3IPClaim with DATA name ok is not ok when hasRequeueAfterError ===")
-			addresses[poolName] = true
-			return addresses, false, nil
-		}
-		fmt.Println("inside releaseAddressFromPool WILL TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
-		err = deleteObject(ctx, m.client, ipClaim)
-		if err != nil {
-			fmt.Println("inside releaseAddressFromPool ERR IS NOT NILL WHEN TRY DELETING IPCLAIM WITH DATA NAME THIS TIME")
-			fmt.Println(err)
-			return addresses, false, err
-		}
-	}
-
 	addresses[poolName] = true
 	return addresses, false, nil
 }
