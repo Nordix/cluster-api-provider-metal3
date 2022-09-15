@@ -1833,7 +1833,7 @@ func (m *MachineManager) getNodesWithLabel(ctx context.Context, nodeLabel string
 	return nodes, nodesCount, err
 }
 
-// getMatchingNodesWithoutLabelCount tLabel gets kubernetes nodes based on their Spec.providerID field.
+// getMatchingNodesWithoutLabelCount gets kubernetes nodes based on their Spec.providerID field.
 func (m *MachineManager) getMatchingNodesWithoutLabelCount(ctx context.Context, providerIDLegacy, providerIDNew string, providerIDonM3M *string, clientFactory ClientGetter) (int, error) {
 	corev1Remote, err := clientFactory(ctx, m.client, m.Cluster)
 	matchingNodesCount := 0

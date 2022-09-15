@@ -39,6 +39,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	clientfake "k8s.io/client-go/kubernetes/fake"
 	clientcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/klog/v2"
 	"k8s.io/utils/pointer"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	controlplanev1 "sigs.k8s.io/cluster-api/controlplane/kubeadm/api/v1beta1"
@@ -2528,6 +2529,11 @@ var _ = Describe("Metal3Machine manager", func() {
 			providerID:    pointer.StringPtr(ProviderID),
 			expectedBMHID: string(Bmhuid),
 		}),
+		// TODO: Should we really accept empty provider ID?
+		Entry("Empty string providerID", testCaseGetProviderIDAndBMHID{
+			providerID:    pointer.String(""),
+			expectedBMHID: "",
+		}),
 	)
 
 	Describe("Test SetNodeProviderID", func() {
@@ -2599,12 +2605,8 @@ var _ = Describe("Metal3Machine manager", func() {
 				// get the node
 				nodes, err := corev1Client.Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				var node corev1.Node
-				for _, currentNode := range nodes.Items {
-					node = currentNode
-					// there is only one node
-					break
-				}
+				Expect(nodes.Items).To(HaveLen(1))
+				node := nodes.Items[0]
 				Expect(node.Spec.ProviderID).To(Equal(tc.ExpectedProviderID))
 			},
 			Entry("Set target ProviderID, No matching node", testCaseSetNodePoviderID{
@@ -2692,12 +2694,8 @@ var _ = Describe("Metal3Machine manager", func() {
 				Expect(err).NotTo(HaveOccurred())
 				nodes, err := corev1Client.Nodes().List(ctx, metav1.ListOptions{})
 				Expect(err).NotTo(HaveOccurred())
-				var node corev1.Node
-				for _, currentNode := range nodes.Items {
-					node = currentNode
-					// there is only one node
-					break
-				}
+				Expect(nodes.Items).To(HaveLen(1))
+				node := nodes.Items[0]
 				Expect(node.Spec.ProviderID).To(Equal(tc.ExpectedProviderID))
 			},
 			Entry("Accept providerID when set on a node", testCaseSetNodePoviderID{
@@ -2751,6 +2749,154 @@ var _ = Describe("Metal3Machine manager", func() {
 				M3MHasHostAnnotation: true,
 			}),
 		)
+	})
+
+	PIt("returns error when old Node with providerID is stuck", func() {
+		// We have 2 Nodes.
+		// One is stuck in terminating and has a provider ID that references a BMH,
+		// but the unerlying Machine and M3M are already gone, and the BMH is deprovisioned.
+		// The other is waiting for provider ID.
+		defer GinkgoRecover()
+
+		s := runtime.NewScheme()
+		err := clusterv1.AddToScheme(s)
+		if err != nil {
+			log.Printf("AddToScheme failed: %v", err)
+		}
+		err = bmov1alpha1.AddToScheme(s)
+		if err != nil {
+			log.Printf("AddToScheme failed: %v", err)
+		}
+
+		objects := []runtime.Object{
+			&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-0",
+				},
+				Spec: corev1.NodeSpec{
+					ProviderID: "metal3://metal3/node-0/current-metal3machine",
+				},
+			},
+			&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "node-1",
+					DeletionTimestamp: &timeNow,
+				},
+				Spec: corev1.NodeSpec{
+					ProviderID: "metal3://metal3/node-0/old-deleted-metal3machine",
+				},
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+		corev1Client := clientfake.NewSimpleClientset(objects...).CoreV1()
+		m := func(ctx context.Context, client client.Client, cluster *clusterv1.Cluster) (
+			clientcorev1.CoreV1Interface, error,
+		) {
+			return corev1Client, nil
+		}
+
+		machineMgr, err := NewMachineManager(fakeClient, newCluster(clusterName),
+			newMetal3Cluster(metal3ClusterName, bmcOwnerRef,
+				&infrav1.Metal3ClusterSpec{NoCloudProvider: false}, nil,
+			),
+			&clusterv1.Machine{}, &infrav1.Metal3Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "current-metal3machine",
+					Namespace: "metal3",
+					UID:       m3muid,
+					Annotations: map[string]string{
+						HostAnnotation: "metal3/node-0",
+					},
+				},
+			}, klog.NewKlogr(),
+			// }, logr.Discard(),
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		legacyProviderID := string(Bmhuid) // bmhuid
+		err = machineMgr.SetNodeProviderID(context.TODO(), &legacyProviderID, &ProviderID, m)
+		// TODO: Do we expect an error here? Should we requeue?
+		Expect(err).To(HaveOccurred())
+		// Expect(err).NotTo(HaveOccurred())
+
+	})
+
+	It("Should not return empty providerID", func() {
+		// We have an old node that is terminating.
+		// We hace a new node that does not have a provider ID yet.
+		// The old Node and the new Machine both reference the same BMH. (The old Machine is already gone.)
+		defer GinkgoRecover()
+
+		s := runtime.NewScheme()
+		err := clusterv1.AddToScheme(s)
+		if err != nil {
+			log.Printf("AddToScheme failed: %v", err)
+		}
+		err = bmov1alpha1.AddToScheme(s)
+		if err != nil {
+			log.Printf("AddToScheme failed: %v", err)
+		}
+
+		bmhuid := "aaa-bbb-ccc-111-222-333"
+
+		objects := []runtime.Object{
+			&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node-new",
+				},
+				// No providerID set
+				Spec: corev1.NodeSpec{},
+			},
+			&corev1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "node-old",
+					DeletionTimestamp: &timeNow,
+					Labels: map[string]string{
+						ProviderLabelPrefix: string(bmhuid),
+					},
+				},
+				// This node is terminating and has the provider ID from before.
+				Spec: corev1.NodeSpec{
+					ProviderID: "metal3://metal3/node-0/old-deleted-metal3machine",
+				},
+			},
+		}
+
+		fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+		corev1Client := clientfake.NewSimpleClientset(objects...).CoreV1()
+		m := func(ctx context.Context, client client.Client, cluster *clusterv1.Cluster) (
+			clientcorev1.CoreV1Interface, error,
+		) {
+			return corev1Client, nil
+		}
+
+		machineMgr, err := NewMachineManager(fakeClient, newCluster(clusterName),
+			newMetal3Cluster(metal3ClusterName, bmcOwnerRef,
+				&infrav1.Metal3ClusterSpec{NoCloudProvider: true}, nil,
+			),
+			&clusterv1.Machine{}, &infrav1.Metal3Machine{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "current-metal3machine",
+					Namespace: "metal3",
+					UID:       m3muid,
+					Annotations: map[string]string{
+						HostAnnotation: "metal3/node-0",
+					},
+				},
+			}, klog.NewKlogr(),
+			// }, logr.Discard(),
+		)
+		Expect(err).NotTo(HaveOccurred())
+
+		providerID := ""
+		legacyProviderID := bmhuid
+		err = machineMgr.SetNodeProviderID(context.TODO(), &legacyProviderID, &providerID, m)
+		Expect(err).To(BeNil())
+		// NOTE: We can reach "node using unsupported providerID format" with err still == nil!
+		// This is beacuse err is coming from the marshalling of the node.
+		// In this case the providerID is never updated, so we can get an empty string here.
+		Expect(providerID).ToNot(Equal(""))
 	})
 
 	type testCaseGetUserDataSecretName struct {
