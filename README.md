@@ -23,6 +23,7 @@ cluster on top of bare metal infrastructure using Metal3.
 | v1beta1       | v1beta1             | v1.1.X        | v1.1.X       |
 | v1beta1       | v1beta1             | v1.2.X        | v1.2.X       |
 
+
 ## Deploying the metal3 provider
 
 The recommended method is using
