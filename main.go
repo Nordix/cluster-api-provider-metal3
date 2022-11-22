@@ -215,7 +215,7 @@ func initFlags(fs *pflag.FlagSet) {
 	flag.IntVar(
 		&webhookPort,
 		"webhook-port",
-		9443,
+		0,
 		"Webhook Server port",
 	)
 
@@ -272,6 +272,9 @@ func setupChecks(mgr ctrl.Manager) {
 }
 
 func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
+	if webhookPort != 0 {
+		return
+	}
 	if err := (&controllers.Metal3MachineReconciler{
 		Client:           mgr.GetClient(),
 		ManagerFactory:   baremetal.NewManagerFactory(mgr.GetClient()),
@@ -343,6 +346,9 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 }
 
 func setupWebhooks(mgr ctrl.Manager) {
+	if webhookPort == 0 {
+		return
+	}
 	if err := (&infrav1.Metal3Cluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Metal3Cluster")
 		os.Exit(1)

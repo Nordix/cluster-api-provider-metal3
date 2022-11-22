@@ -47,20 +47,20 @@ type Metal3DataTemplateReconciler struct {
 	WatchFilterValue string
 }
 
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datatemplates,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datatemplates/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3dataclaims,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3dataclaims/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=ipam.metal3.io,resources=ipclaims,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=ipam.metal3.io,resources=ipclaims/status,verbs=get;watch
-// +kubebuilder:rbac:groups=ipam.metal3.io,resources=ipaddresses,verbs=get;list;watch
-// +kubebuilder:rbac:groups=ipam.metal3.io,resources=ipaddresses/status,verbs=get
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters,verbs=get;list;watch
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters/status,verbs=get
-// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datatemplates,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datatemplates/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3dataclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3dataclaims/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=ipam.metal3.io,namespace=test1,resources=ipclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=ipam.metal3.io,namespace=test1,resources=ipclaims/status,verbs=get;watch
+// +kubebuilder:rbac:groups=ipam.metal3.io,namespace=test1,resources=ipaddresses,verbs=get;list;watch
+// +kubebuilder:rbac:groups=ipam.metal3.io,namespace=test1,resources=ipaddresses/status,verbs=get
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=clusters,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=clusters/status,verbs=get
+// +kubebuilder:rbac:groups="",namespace=test1,resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile handles Metal3Machine events.
 func (r *Metal3DataTemplateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {

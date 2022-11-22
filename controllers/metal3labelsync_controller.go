@@ -66,13 +66,13 @@ type Metal3LabelSyncReconciler struct {
 	WatchFilterValue string
 }
 
-// +kubebuilder:rbac:groups=metal3.io,resources=baremetalhosts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=metal3.io,resources=baremetalhosts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machines,verbs=get;list;watch
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machines/status,verbs=get
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=metal3.io,namespace=test1,resources=baremetalhosts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=metal3.io,namespace=test1,resources=baremetalhosts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3machines,verbs=get;list;watch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3machines/status,verbs=get
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=machines;machines/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=secrets,verbs=get;list;watch
 
 // Reconcile handles label sync events.
 func (r *Metal3LabelSyncReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {

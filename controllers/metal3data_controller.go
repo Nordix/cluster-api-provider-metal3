@@ -50,10 +50,10 @@ type Metal3DataReconciler struct {
 	WatchFilterValue string
 }
 
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile handles Metal3Data events.
 func (r *Metal3DataReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {

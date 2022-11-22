@@ -44,9 +44,9 @@ type Metal3RemediationReconciler struct {
 	Log            logr.Logger
 }
 
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3remediations,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3remediations/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3remediations,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3remediations/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=machines;machines/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=nodes,verbs=get;list;watch;update;patch;delete
 
 // Reconcile handles Metal3Remediation events.

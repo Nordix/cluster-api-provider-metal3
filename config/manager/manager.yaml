@@ -21,8 +21,8 @@ spec:
       - command:
         - /manager
         args:
-          - "--webhook-port=9443"
           - "--enableBMHNameBasedPreallocation=${enableBMHNameBasedPreallocation:=false}"
+          - "--namespace=test1"
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: manager

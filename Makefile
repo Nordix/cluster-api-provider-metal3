@@ -356,9 +356,7 @@ generate-examples: $(KUSTOMIZE) clean-examples ## Generate examples configuratio
 
 .PHONY: docker-build
 docker-build: ## Build the docker image for controller-manager
-	docker build --network=host --pull --build-arg ARCH=$(ARCH) . -t $(CONTROLLER_IMG)-$(ARCH):$(TAG)
-	MANIFEST_IMG=$(CONTROLLER_IMG)-$(ARCH) MANIFEST_TAG=$(TAG) $(MAKE) set-manifest-image
-	$(MAKE) set-manifest-pull-policy
+	podman build --network=host --pull --build-arg ARCH=$(ARCH) build -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push the docker image

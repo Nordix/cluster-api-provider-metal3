@@ -3,7 +3,26 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
+  name: test1-manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
   name: manager-role
+  namespace: test1
 rules:
 - apiGroups:
   - ""
@@ -95,17 +114,6 @@ rules:
   verbs:
   - get
   - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - delete
-  - get
-  - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - infrastructure.cluster.x-k8s.io

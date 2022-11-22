@@ -56,23 +56,23 @@ type Metal3MachineReconciler struct {
 	WatchFilterValue string
 }
 
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machines,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machines/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3dataclaims,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3dataclaims/status,verbs=get
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3datas/status,verbs=get
-// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=metal3machinetemplates,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinedeployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machinesets,verbs=get;list;watch
-// +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=kubeadmcontrolplanes,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3machines,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3machines/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3dataclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3dataclaims/status,verbs=get
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3datas/status,verbs=get
+// +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,namespace=test1,resources=metal3machinetemplates,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=machines;machines/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=machinedeployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=machinesets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cluster.x-k8s.io,namespace=test1,resources=kubeadmcontrolplanes,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",namespace=test1,resources=events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",namespace=test1,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
 // Add RBAC rules to access cluster-api resources
-// +kubebuilder:rbac:groups=metal3.io,resources=baremetalhosts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=metal3.io,resources=baremetalhosts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=metal3.io,namespace=test1,resources=baremetalhosts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=metal3.io,namespace=test1,resources=baremetalhosts/status,verbs=get;update;patch
 
 // Reconcile handles Metal3Machine events.
 func (r *Metal3MachineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (_ ctrl.Result, rerr error) {
