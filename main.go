@@ -74,6 +74,7 @@ func init() {
 
 func main() {
 	klog.InitFlags(nil)
+	fmt.Println("=== return if webhook port 0 ===")
 	rand.Seed(time.Now().UnixNano())
 	initFlags(pflag.CommandLine)
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -185,7 +186,7 @@ func initFlags(fs *pflag.FlagSet) {
 	flag.IntVar(
 		&webhookPort,
 		"webhook-port",
-		9443,
+		0,
 		"Webhook Server port",
 	)
 
@@ -242,7 +243,9 @@ func setupChecks(mgr ctrl.Manager) {
 }
 
 func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
-
+	if webhookPort != 0 {
+		return
+	}
 	if err := (&controllers.Metal3MachineReconciler{
 		Client:           mgr.GetClient(),
 		ManagerFactory:   baremetal.NewManagerFactory(mgr.GetClient()),
@@ -314,6 +317,11 @@ func setupReconcilers(ctx context.Context, mgr ctrl.Manager) {
 }
 
 func setupWebhooks(mgr ctrl.Manager) {
+	fmt.Println("=== setup webhook ===")
+	if webhookPort == 0 {
+		fmt.Println("==== setup webhook ==== return")
+		return
+	}
 
 	if err := (&infrav1alpha5.Metal3Cluster{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "Metal3Cluster")
