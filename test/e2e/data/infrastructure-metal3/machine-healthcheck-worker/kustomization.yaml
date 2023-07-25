@@ -1,0 +1,2 @@
+resources:
+- machine-healthcheck-worker.yaml
