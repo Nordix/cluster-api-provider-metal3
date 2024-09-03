@@ -13,6 +13,9 @@ import (
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
+	"net/http"
 )
 
 var (
@@ -191,6 +194,27 @@ func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl
 			KubernetesVersion:        k8sVersion,
 			ControlPlaneMachineCount: &controlPlaneMachineCount,
 			WorkerMachineCount:       &workerMachineCount,
+		},
+		PreWaitForCluster: func () {
+			// get bmh
+			// get m3m
+			// waiting machine
+			By("Waiting for all Machines to be provisioning")
+			WaitForNumMachinesInState(ctx, clusterv1.MachinePhaseProvisioning, WaitForNumInput{
+				Client:    bootstrapClusterProxy.GetClient(),
+				Options:   []client.ListOption{client.InNamespace(namespace)},
+				Replicas:  2,
+				Intervals:  e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
+			})
+
+			metal3Machines := infrav1.Metal3MachineList{}
+			bootstrapClusterProxy.GetClient().List(ctx, &metal3Machines, []client.ListOption{client.InNamespace(namespace)}...)
+			for _, m3machine := range metal3Machines.Items {
+				providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
+				machine, _ := Metal3MachineToMachineName(m3machine)
+				resp, err :=http.Get("http://localhost:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+				Logf("resp : %v err: %v", resp, err)
+			}
 		},
 		WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
 		WaitForControlPlaneIntervals: e2eConfig.GetIntervals(specName, "wait-control-plane"),

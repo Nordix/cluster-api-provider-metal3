@@ -20,8 +20,8 @@ source "${REPO_ROOT}/scripts/environment.sh"
 # Clone dev-env repo
 sudo mkdir -p ${WORKING_DIR}
 sudo chown "${USER}":"${USER}" ${WORKING_DIR}
-M3_DEV_ENV_REPO="https://github.com/metal3-io/metal3-dev-env.git"
-M3_DEV_ENV_BRANCH=main
+M3_DEV_ENV_REPO="https://github.com/Nordix/metal3-dev-env.git"
+M3_DEV_ENV_BRANCH=Integrate-fakeIPA/mohammed
 M3_DEV_ENV_PATH="${M3_DEV_ENV_PATH:-${WORKING_DIR}/metal3-dev-env}"
 clone_repo "${M3_DEV_ENV_REPO}" "${M3_DEV_ENV_BRANCH}" "${M3_DEV_ENV_PATH}"
 
@@ -33,6 +33,8 @@ export NUM_NODES=${NUM_NODES:-"4"}
 export KUBERNETES_VERSION=${KUBERNETES_VERSION}
 export IMAGE_OS=${IMAGE_OS}
 export FORCE_REPO_UPDATE="false"
+export VM_PLATFORM="fake"
+export FAKE_IPA_I="192.168.111.1:5000/localimages/fake-ipa"
 EOF
 if [[ ${GINKGO_FOCUS:-} == "features" ]]; then
     mkdir -p "$CAPI_CONFIG_FOLDER"
@@ -65,6 +67,8 @@ source "${M3_DEV_ENV_PATH}/lib/releases.sh"
 source "${M3_DEV_ENV_PATH}/lib/ironic_basic_auth.sh"
 # shellcheck disable=SC1091,SC1090
 source "${M3_DEV_ENV_PATH}/lib/ironic_tls_setup.sh"
+# shellcheck disable=SC1091,SC1090
+source "/tmp/vars_cluster.sh"
 
 # image for live iso testing
 export LIVE_ISO_IMAGE="https://artifactory.nordix.org/artifactory/metal3/images/iso/minimal_linux_live-v2.iso"
