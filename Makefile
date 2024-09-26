@@ -456,7 +456,7 @@ docker-push: ## Push the docker image
 
 .PHONY: build-fake-api-server
 build-fake-api-server: ## Build the fake api server
-	cd $(FAKE_APISERVER_DIR) && $(CONTAINER_RUNTIME) build --build-arg ARCH=$(ARCH) -t "quay.io/metal3-io/api-server:$(ARCH)" .
+	cd $(FAKE_APISERVER_DIR) && sudo $(CONTAINER_RUNTIME) build -t "192.168.111.1:5000/localimages/api-server" .
 
 ## --------------------------------------
 ## Docker — All ARCH
