@@ -455,8 +455,11 @@ docker-push: ## Push the docker image
 	docker push $(CONTROLLER_IMG)-$(ARCH):$(TAG)
 
 .PHONY: build-fake-api-server
+build-fake-api-server: CONTAINER_RUNTIME?=docker # Env variable can override this default
+export CONTAINER_RUNTIME 
+
 build-fake-api-server: ## Build the fake api server
-	cd $(FAKE_APISERVER_DIR) && $(CONTAINER_RUNTIME) build --build-arg ARCH=$(ARCH) -t "quay.io/metal3-io/api-server:$(ARCH)" .
+	cd $(FAKE_APISERVER_DIR) && docker build --build-arg ARCH=$(ARCH) -t "quay.io/metal3-io/api-server:$(ARCH)" .
 
 ## --------------------------------------
 ## Docker — All ARCH

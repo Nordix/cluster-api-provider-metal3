@@ -233,14 +233,11 @@ func updateNode(w http.ResponseWriter, r *http.Request) {
 	listener := cloudMgr.GetResourceGroup(resourceName)
 	nodeName := r.URL.Query().Get("nodeName")
 	providerID := r.URL.Query().Get("providerID")
-	timeOutput := metav1.Now()
+	isControlPlane := r.URL.Query().Get("nodeType") == "CP"
 
 	node := &corev1.Node{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: nodeName,
-			Labels: map[string]string{
-				"node-role.kubernetes.io/control-plane": "",
-			},
 		},
 		Spec: corev1.NodeSpec{
 			ProviderID: providerID,
@@ -248,51 +245,15 @@ func updateNode(w http.ResponseWriter, r *http.Request) {
 		Status: corev1.NodeStatus{
 			Conditions: []corev1.NodeCondition{
 				{
-					LastHeartbeatTime:  timeOutput,
-					LastTransitionTime: timeOutput,
 					Type:               corev1.NodeReady,
 					Status:             corev1.ConditionTrue,
 				},
-				{
-					LastHeartbeatTime:  timeOutput,
-					LastTransitionTime: timeOutput,
-					Type:               corev1.NodeMemoryPressure,
-					Status:             corev1.ConditionFalse,
-					Message:            "kubelet has sufficient memory available",
-					Reason:             "KubeletHasSufficientMemory",
-				},
-				{
-					LastHeartbeatTime:  timeOutput,
-					LastTransitionTime: timeOutput,
-					Message:            "kubelet has no disk pressure",
-					Reason:             "KubeletHasNoDiskPressure",
-					Status:             corev1.ConditionFalse,
-					Type:               corev1.NodeDiskPressure,
-				},
-				{
-					LastHeartbeatTime:  timeOutput,
-					LastTransitionTime: timeOutput,
-					Message:            "kubelet has sufficient PID available",
-					Reason:             "KubeletHasSufficientPID",
-					Status:             corev1.ConditionFalse,
-					Type:               corev1.NodePIDPressure,
-				},
-				{
-					LastHeartbeatTime:  timeOutput,
-					LastTransitionTime: timeOutput,
-					Message:            "kubelet is posting ready status",
-					Reason:             "KubeletReady",
-					Status:             corev1.ConditionTrue,
-					Type:               corev1.NodeReady,
-				},
-			},
-			NodeInfo: corev1.NodeSystemInfo{
-				Architecture:    "amd64",
-				BootID:          "a4254236-e1e3-4462-97ed-4a25b8b29884",
-				OperatingSystem: "linux",
-				SystemUUID:      "1ce97e94-730c-42b7-98da-f7dcc0b58e93",
 			},
 		},
+	}
+	if isControlPlane {
+		node.Labels = map[string]string{}
+		node.Labels["node-role.kubernetes.io/control-plane"] = ""
 	}
 	c := listener.GetClient()
 	err := c.Create(ctx, node)
