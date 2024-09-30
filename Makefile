@@ -449,12 +449,13 @@ docker-build: ## Build the docker image for controller-manager
 docker-push: ## Push the docker image
 	docker push $(CONTROLLER_IMG)-$(ARCH):$(TAG)
 
-.PHONY: build-fake-api-server
-build-fake-api-server: CONTAINER_RUNTIME?=docker # Env variable can override this default
-export CONTAINER_RUNTIME 
+.PHONY: build-fkas
+# Allow overriding this by setting CONTAINER_RUNTIME var
+CONTAINER_RUNTIME := $(if $(CONTAINER_RUNTIME),$(CONTAINER_RUNTIME),docker)
+export CONTAINER_RUNTIME
 
-build-fake-api-server: ## Build the fake api server
-	cd $(FAKE_APISERVER_DIR) && docker build --build-arg ARCH=$(ARCH) -t "quay.io/metal3-io/api-server:$(ARCH)" .
+build-fkas: 
+	cd $(FAKE_APISERVER_DIR) && $(CONTAINER_RUNTIME) build --build-arg ARCH=$(ARCH) -t "quay.io/metal3-io/metal3-fkas:latest" .
 
 ## --------------------------------------
 ## Docker — All ARCH

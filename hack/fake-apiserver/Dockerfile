@@ -1,4 +1,4 @@
-# Copyright 2021 The Kubernetes Authors.
+# Copyright 2024 The Kubernetes Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,8 @@
 ARG BUILD_IMAGE=docker.io/golang:1.22.6@sha256:d5e49f92b9566b0ddfc59a0d9d85cd8a848e88c8dc40d97e29f306f07c3f8338
 ARG BASE_IMAGE=gcr.io/distroless/static:nonroot@sha256:9ecc53c269509f63c69a266168e4a687c7eb8c0cfd753bd8bfcaa4f58a90876f
 
-# Build the manager binary on golang image
-FROM $BUILD_IMAGE AS builder
+# Build the fkas binary on golang image
+FROM $BUILD_IMAGE AS base
 WORKDIR /workspace
 
 # Run this with docker build --build_arg $(go env GOPROXY) to override the goproxy
@@ -31,19 +31,35 @@ COPY go.mod go.sum ./
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
 
+# Build Fkas
+FROM base AS build-fkas
+
 # Copy the sources
-COPY main.go .
+COPY cmd/metal3-fkas/*.go .
 
 # Build
 ARG ARCH=amd64
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
     go build -a -ldflags '-extldflags "-static"' \
-    -o manager .
+    -o fkas .
+
+# Build fkas-reconciler
+FROM base AS build-fkas-reconciler
+
+# Copy the sources
+COPY cmd/metal3-fkas-reconciler/*.go .
+
+# Build
+ARG ARCH=amd64
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${ARCH} \
+    go build -a -ldflags '-extldflags "-static"' \
+    -o reconciler .
 
 # Copy the controller-manager into a thin image
 FROM $BASE_IMAGE
 WORKDIR /
-COPY --from=builder /workspace/manager .
 # Use uid of nonroot user (65532) because kubernetes expects numeric user when applying pod security policies
+COPY --from=build-fkas /workspace/fkas .
+COPY --from=build-fkas-reconciler /workspace/reconciler .
 USER 65532
-ENTRYPOINT ["/manager"]
+ENTRYPOINT ["/fkas"]
