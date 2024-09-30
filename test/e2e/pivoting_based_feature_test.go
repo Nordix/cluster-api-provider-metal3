@@ -16,6 +16,9 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	"net/http"
+	b64 "encoding/base64"
+	"io/ioutil"
+	"encoding/json"
 )
 
 var (
@@ -173,6 +176,40 @@ var _ = Describe("Testing features in ephemeral or target cluster [pivoting] [fe
 
 	})
 
+type Endpoint struct {
+	Host string
+	Port int
+}
+func check(e error){
+	if e != nil {
+		panic(e)
+	}
+}
+func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl.ApplyClusterTemplateAndWaitResult) {
+
+	caKey, err:= os.ReadFile("/tmp/ca.key")
+	check(err)
+	caCert, err:= os.ReadFile("/tmp/ca.crt")
+	check(err)
+	etcdKey, err:= os.ReadFile("/tmp/etcd.key")
+	check(err)
+	etcdCert, err:= os.ReadFile("/tmp/etcd.crt")
+	check(err)
+	caKeyEncoded:=b64.StdEncoding.EncodeToString(caKey)
+	caCertEncoded:=b64.StdEncoding.EncodeToString(caCert)
+	etcdKeyEncoded:=b64.StdEncoding.EncodeToString(etcdKey)
+	etcdCertEncoded:=b64.StdEncoding.EncodeToString(etcdCert)
+	cluster_endpoints, err :=http.Get("http://172.22.0.2:3333/register?resource=metal3/test72&caKey="+caKeyEncoded+"&caCert="+caCertEncoded+"&etcdKey="+etcdKeyEncoded+"&etcdCert="+etcdCertEncoded)
+	check(err)
+	defer cluster_endpoints.Body.Close()
+	body, err := ioutil.ReadAll(cluster_endpoints.Body)
+	check(err)
+	var response Endpoint
+	json.Unmarshal(body, &response)
+	Logf("CLUSTER_APIENDPOINT_HOST %v CLUSTER_APIENDPOINT_PORT %v", response.Host, response.Port)
+	return createTargetCluster(k8sVersion)
+
+}
 func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl.ApplyClusterTemplateAndWaitResult) {
 	By("Creating a high available cluster")
 	imageURL, imageChecksum := EnsureImage(k8sVersion)
@@ -212,7 +249,7 @@ func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl
 			for _, m3machine := range metal3Machines.Items {
 				providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
 				machine, _ := Metal3MachineToMachineName(m3machine)
-				resp, err :=http.Get("http://localhost:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+				resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
 				Logf("resp : %v err: %v", resp, err)
 			}
 		},

@@ -150,6 +150,8 @@ providers:
       targetName: "cluster-template-ubuntu.yaml"
     - sourcePath: "../_out/cluster-template-centos.yaml"
       targetName: "cluster-template-centos.yaml"
+    - sourcePath: "../_out/cluster-template-centos-fake.yaml"
+      targetName: "cluster-template-centos-fake.yaml"
     - sourcePath: "../_out/clusterclass.yaml"
       targetName: "clusterclass-test-clusterclass.yaml"
     - sourcePath: "../_out/cluster-template-centos-md-remediation.yaml"

@@ -11,7 +11,7 @@ import (
 
 var _ = Describe("When testing basic cluster creation [basic]", Label("basic"), func() {
 	BeforeEach(func() {
-		osType := strings.ToLower(os.Getenv("OS"))
+		osType := strings.ToLower(os.Getenv("OS"))+"-fake"
 		Expect(osType).ToNot(Equal(""))
 		validateGlobals(specName)
 
@@ -23,7 +23,7 @@ var _ = Describe("When testing basic cluster creation [basic]", Label("basic"), 
 		By("Fetching cluster configuration")
 		k8sVersion := e2eConfig.GetVariable("KUBERNETES_VERSION")
 		By("Provision Workload cluster")
-		targetCluster, _ = createTargetCluster(k8sVersion)
+		targetCluster, _ = createFakeTargetCluster(k8sVersion)
 	})
 
 	AfterEach(func() {

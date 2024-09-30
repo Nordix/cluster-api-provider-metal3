@@ -1,0 +1,4 @@
+resources:
+- ../bases/ippool
+- ../bases/centos-kubeadm-config
+- secrets.yaml
