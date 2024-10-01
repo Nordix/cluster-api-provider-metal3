@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metal3-fake-api-server
+  namespace: metal3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: capim
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: capim
+    spec:
+      hostNetwork: true
+      containers:
+        - image: 192.168.111.1:5000/localimages/api-server
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          name: apiserver

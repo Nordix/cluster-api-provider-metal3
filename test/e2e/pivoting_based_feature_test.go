@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -199,7 +200,11 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	caCertEncoded:=b64.StdEncoding.EncodeToString(caCert)
 	etcdKeyEncoded:=b64.StdEncoding.EncodeToString(etcdKey)
 	etcdCertEncoded:=b64.StdEncoding.EncodeToString(etcdCert)
-	cluster_endpoints, err :=http.Get("http://172.22.0.2:3333/register?resource=metal3/test72&caKey="+caKeyEncoded+"&caCert="+caCertEncoded+"&etcdKey="+etcdKeyEncoded+"&etcdCert="+etcdCertEncoded)
+	os.Setenv("CA_KEY_ENCODED", caKeyEncoded)
+	os.Setenv("CA_CERT_ENCODED", caCertEncoded)
+	os.Setenv("ETCD_KEY_ENCODED", etcdKeyEncoded)
+	os.Setenv("ETCD_CERT_ENCODED", etcdCertEncoded)
+	cluster_endpoints, err :=http.Get("http://172.22.0.2:3333/register?resource=metal3/test1&caKey="+caKeyEncoded+"&caCert="+caCertEncoded+"&etcdKey="+etcdKeyEncoded+"&etcdCert="+etcdCertEncoded)
 	check(err)
 	defer cluster_endpoints.Body.Close()
 	body, err := ioutil.ReadAll(cluster_endpoints.Body)
@@ -207,6 +212,8 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	var response Endpoint
 	json.Unmarshal(body, &response)
 	Logf("CLUSTER_APIENDPOINT_HOST %v CLUSTER_APIENDPOINT_PORT %v", response.Host, response.Port)
+	os.Setenv("CLUSTER_APIENDPOINT_HOST", response.Host)
+	os.Setenv("CLUSTER_APIENDPOINT_PORT", fmt.Sprintf("%v",response.Port))
 	return createTargetCluster(k8sVersion)
 
 }
@@ -236,21 +243,45 @@ func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl
 			// get bmh
 			// get m3m
 			// waiting machine
-			By("Waiting for all Machines to be provisioning")
+			By("Waiting for one Machine to be provisioning")
+			WaitForNumMachinesInState(ctx, clusterv1.MachinePhaseProvisioning, WaitForNumInput{
+				Client:    bootstrapClusterProxy.GetClient(),
+				Options:   []client.ListOption{client.InNamespace(namespace)},
+				Replicas:  1,
+				Intervals:  e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
+			})
+
+
+			metal3Machines := infrav1.Metal3MachineList{}
+			metal3Machines_updated :=  ""
+			bootstrapClusterProxy.GetClient().List(ctx, &metal3Machines, []client.ListOption{client.InNamespace(namespace)}...)
+			for _, m3machine := range metal3Machines.Items {
+				if (m3machine.GetAnnotations()["metal3.io/BareMetalHost"] != ""){
+					providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
+					machine, _ := Metal3MachineToMachineName(m3machine)
+					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+					resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+					metal3Machines_updated= m3machine.GetName()
+				Logf("resp : %v err: %v", resp, err)
+				}
+				
+			}
+			By("Waiting for the other Machine to be provisioning")
 			WaitForNumMachinesInState(ctx, clusterv1.MachinePhaseProvisioning, WaitForNumInput{
 				Client:    bootstrapClusterProxy.GetClient(),
 				Options:   []client.ListOption{client.InNamespace(namespace)},
 				Replicas:  2,
 				Intervals:  e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
 			})
-
-			metal3Machines := infrav1.Metal3MachineList{}
-			bootstrapClusterProxy.GetClient().List(ctx, &metal3Machines, []client.ListOption{client.InNamespace(namespace)}...)
 			for _, m3machine := range metal3Machines.Items {
-				providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
-				machine, _ := Metal3MachineToMachineName(m3machine)
-				resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+				if (m3machine.GetName() != metal3Machines_updated){
+					providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
+					machine, _ := Metal3MachineToMachineName(m3machine)
+					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
+					resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
 				Logf("resp : %v err: %v", resp, err)
+				}
+				
 			}
 		},
 		WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),

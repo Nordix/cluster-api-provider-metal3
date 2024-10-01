@@ -67,8 +67,6 @@ source "${M3_DEV_ENV_PATH}/lib/releases.sh"
 source "${M3_DEV_ENV_PATH}/lib/ironic_basic_auth.sh"
 # shellcheck disable=SC1091,SC1090
 source "${M3_DEV_ENV_PATH}/lib/ironic_tls_setup.sh"
-# shellcheck disable=SC1091,SC1090
-source "/tmp/vars_cluster.sh"
 
 # image for live iso testing
 export LIVE_ISO_IMAGE="https://artifactory.nordix.org/artifactory/metal3/images/iso/minimal_linux_live-v2.iso"
