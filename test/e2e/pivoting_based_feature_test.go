@@ -204,7 +204,60 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	os.Setenv("CA_CERT_ENCODED", caCertEncoded)
 	os.Setenv("ETCD_KEY_ENCODED", etcdKeyEncoded)
 	os.Setenv("ETCD_CERT_ENCODED", etcdCertEncoded)
-	cluster_endpoints, err :=http.Get("http://172.22.0.2:3333/register?resource=metal3/test1&caKey="+caKeyEncoded+"&caCert="+caCertEncoded+"&etcdKey="+etcdKeyEncoded+"&etcdCert="+etcdCertEncoded)
+	By("Creating a Cluster CA Secret resource")
+	secretClusterCA := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName+"-ca",
+			Namespace: namespace,
+			Labels: map[string]string{
+				clusterv1.ClusterNameLabel: clusterName,
+			},
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			"tls.crt": []byte(caCertEncoded),
+			"tls.key": []byte(caKeyEncoded),
+		},
+	}
+
+	Expect(bootstrapClient.Create(ctx, secretClusterCA)).To(Succeed(), "should create Cluster CA Secret CR")
+	By("Creating a ETCD CA Secret resource")
+	secretClusterETCD := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterName+"-etcd",
+			Namespace: namespace,
+			Labels: map[string]string{
+				clusterv1.ClusterNameLabel: clusterName,
+			},
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			"tls.crt": []byte(etcdCertEncoded),
+			"tls.key": []byte(etcdKeyEncoded),
+		},
+	}
+
+	Expect(bootstrapClient.Create(ctx, secretClusterETCD)).To(Succeed(), "should create ETCD CA Secret CR")
+
+	type FKASCluster struct {
+		resource string `json:"resource"`
+		caKey string `json:"caKey"`
+		caCert string `json:"caCert"`
+		etcdKey string `json:"etcdKey"`
+		etcdCert string `json:"etcdCert"`
+	 }
+	 fkasCluster := FKASCluster{
+		resource: "'"+$namespace+"/"+clusterName+"'",
+		caKey: caKey,
+		caCert: caCert,
+		etcdKey: etcdKey,
+		etcdCert: etcdCert,
+	 }
+	 marshalled, err := json.Marshal(fkasCluster)
+	 if err != nil {
+		 log.Fatalf("impossible to marshall fkasCluster: %s", err)
+	 }
+	cluster_endpoints, err :=http.Post("http://172.22.0.2:3333/register?resource=metal3/", bytes.NewReader(marshalled))
 	check(err)
 	defer cluster_endpoints.Body.Close()
 	body, err := ioutil.ReadAll(cluster_endpoints.Body)
