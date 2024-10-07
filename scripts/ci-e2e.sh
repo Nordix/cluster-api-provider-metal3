@@ -33,8 +33,8 @@ export NUM_NODES=${NUM_NODES:-"4"}
 export KUBERNETES_VERSION=${KUBERNETES_VERSION}
 export IMAGE_OS=${IMAGE_OS}
 export FORCE_REPO_UPDATE="false"
-export VM_PLATFORM="fake"
-export FAKE_IPA_I="192.168.111.1:5000/localimages/fake-ipa"
+export EPHEMERAL_CLUSTER="minikube"
+export NODES_PLATFORM="fake"
 EOF
 if [[ ${GINKGO_FOCUS:-} == "features" ]]; then
     mkdir -p "$CAPI_CONFIG_FOLDER"

@@ -1,25 +1,27 @@
 package e2e
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"fmt"
 
+	b64 "encoding/base64"
+	"encoding/json"
+	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"net/http"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/test/framework"
 	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
-	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
-	"net/http"
-	b64 "encoding/base64"
-	"io/ioutil"
-	"encoding/json"
 )
 
 var (
@@ -181,25 +183,27 @@ type Endpoint struct {
 	Host string
 	Port int
 }
-func check(e error){
+
+func check(e error) {
 	if e != nil {
 		panic(e)
 	}
 }
 func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl.ApplyClusterTemplateAndWaitResult) {
 
-	caKey, err:= os.ReadFile("/tmp/ca.key")
+	bootstrapClient := bootstrapClusterProxy.GetClient()
+	caKey, err := os.ReadFile("/tmp/ca.key")
 	check(err)
-	caCert, err:= os.ReadFile("/tmp/ca.crt")
+	caCert, err := os.ReadFile("/tmp/ca.crt")
 	check(err)
-	etcdKey, err:= os.ReadFile("/tmp/etcd.key")
+	etcdKey, err := os.ReadFile("/tmp/etcd.key")
 	check(err)
-	etcdCert, err:= os.ReadFile("/tmp/etcd.crt")
+	etcdCert, err := os.ReadFile("/tmp/etcd.crt")
 	check(err)
-	caKeyEncoded:=b64.StdEncoding.EncodeToString(caKey)
-	caCertEncoded:=b64.StdEncoding.EncodeToString(caCert)
-	etcdKeyEncoded:=b64.StdEncoding.EncodeToString(etcdKey)
-	etcdCertEncoded:=b64.StdEncoding.EncodeToString(etcdCert)
+	caKeyEncoded := b64.StdEncoding.EncodeToString(caKey)
+	caCertEncoded := b64.StdEncoding.EncodeToString(caCert)
+	etcdKeyEncoded := b64.StdEncoding.EncodeToString(etcdKey)
+	etcdCertEncoded := b64.StdEncoding.EncodeToString(etcdCert)
 	os.Setenv("CA_KEY_ENCODED", caKeyEncoded)
 	os.Setenv("CA_CERT_ENCODED", caCertEncoded)
 	os.Setenv("ETCD_KEY_ENCODED", etcdKeyEncoded)
@@ -207,7 +211,7 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	By("Creating a Cluster CA Secret resource")
 	secretClusterCA := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName+"-ca",
+			Name:      clusterName + "-ca",
 			Namespace: namespace,
 			Labels: map[string]string{
 				clusterv1.ClusterNameLabel: clusterName,
@@ -224,7 +228,7 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	By("Creating a ETCD CA Secret resource")
 	secretClusterETCD := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      clusterName+"-etcd",
+			Name:      clusterName + "-etcd",
 			Namespace: namespace,
 			Labels: map[string]string{
 				clusterv1.ClusterNameLabel: clusterName,
@@ -240,24 +244,24 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	Expect(bootstrapClient.Create(ctx, secretClusterETCD)).To(Succeed(), "should create ETCD CA Secret CR")
 
 	type FKASCluster struct {
-		resource string `json:"resource"`
-		caKey string `json:"caKey"`
-		caCert string `json:"caCert"`
-		etcdKey string `json:"etcdKey"`
-		etcdCert string `json:"etcdCert"`
-	 }
-	 fkasCluster := FKASCluster{
-		resource: "'"+$namespace+"/"+clusterName+"'",
-		caKey: caKey,
-		caCert: caCert,
-		etcdKey: etcdKey,
-		etcdCert: etcdCert,
-	 }
-	 marshalled, err := json.Marshal(fkasCluster)
-	 if err != nil {
-		 log.Fatalf("impossible to marshall fkasCluster: %s", err)
-	 }
-	cluster_endpoints, err :=http.Post("http://172.22.0.2:3333/register?resource=metal3/", bytes.NewReader(marshalled))
+		Resource string `json:"resource"`
+		CaKey    string `json:"caKey"`
+		CaCert   string `json:"caCert"`
+		EtcdKey  string `json:"etcdKey"`
+		EtcdCert string `json:"etcdCert"`
+	}
+	fkasCluster := FKASCluster{
+		Resource: fmt.Sprintf("%s/%s", namespace, clusterName),
+		CaKey:    string(caKey),
+		CaCert:   string(caCert),
+		EtcdKey:  string(etcdKey),
+		EtcdCert: string(etcdCert),
+	}
+	marshalled, err := json.Marshal(fkasCluster)
+	if err != nil {
+		Logf("impossible to marshall fkasCluster: %s", err)
+	}
+	cluster_endpoints, err := http.Post("http://172.22.0.2:3333/register", "application/json", bytes.NewReader(marshalled))
 	check(err)
 	defer cluster_endpoints.Body.Close()
 	body, err := ioutil.ReadAll(cluster_endpoints.Body)
@@ -266,7 +270,7 @@ func createFakeTargetCluster(k8sVersion string) (framework.ClusterProxy, *cluste
 	json.Unmarshal(body, &response)
 	Logf("CLUSTER_APIENDPOINT_HOST %v CLUSTER_APIENDPOINT_PORT %v", response.Host, response.Port)
 	os.Setenv("CLUSTER_APIENDPOINT_HOST", response.Host)
-	os.Setenv("CLUSTER_APIENDPOINT_PORT", fmt.Sprintf("%v",response.Port))
+	os.Setenv("CLUSTER_APIENDPOINT_PORT", fmt.Sprintf("%v", response.Port))
 	return createTargetCluster(k8sVersion)
 
 }
@@ -292,7 +296,7 @@ func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl
 			ControlPlaneMachineCount: &controlPlaneMachineCount,
 			WorkerMachineCount:       &workerMachineCount,
 		},
-		PreWaitForCluster: func () {
+		PreWaitForCluster: func() {
 			// get bmh
 			// get m3m
 			// waiting machine
@@ -301,40 +305,39 @@ func createTargetCluster(k8sVersion string) (framework.ClusterProxy, *clusterctl
 				Client:    bootstrapClusterProxy.GetClient(),
 				Options:   []client.ListOption{client.InNamespace(namespace)},
 				Replicas:  1,
-				Intervals:  e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
+				Intervals: e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
 			})
 
-
 			metal3Machines := infrav1.Metal3MachineList{}
-			metal3Machines_updated :=  ""
+			metal3Machines_updated := ""
 			bootstrapClusterProxy.GetClient().List(ctx, &metal3Machines, []client.ListOption{client.InNamespace(namespace)}...)
 			for _, m3machine := range metal3Machines.Items {
-				if (m3machine.GetAnnotations()["metal3.io/BareMetalHost"] != ""){
-					providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
+				if m3machine.GetAnnotations()["metal3.io/BareMetalHost"] != "" {
+					providerID := "metal3://metal3/" + Metal3MachineToBmhName(m3machine) + "/" + m3machine.GetName()
 					machine, _ := Metal3MachineToMachineName(m3machine)
-					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
-					resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
-					metal3Machines_updated= m3machine.GetName()
-				Logf("resp : %v err: %v", resp, err)
+					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName=" + machine + "&providerID=" + providerID)
+					resp, err := http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName=" + machine + "&providerID=" + providerID)
+					metal3Machines_updated = m3machine.GetName()
+					Logf("resp : %v err: %v", resp, err)
 				}
-				
+
 			}
 			By("Waiting for the other Machine to be provisioning")
 			WaitForNumMachinesInState(ctx, clusterv1.MachinePhaseProvisioning, WaitForNumInput{
 				Client:    bootstrapClusterProxy.GetClient(),
 				Options:   []client.ListOption{client.InNamespace(namespace)},
 				Replicas:  2,
-				Intervals:  e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
+				Intervals: e2eConfig.GetIntervals(specName, "wait-machine-remediation"),
 			})
 			for _, m3machine := range metal3Machines.Items {
-				if (m3machine.GetName() != metal3Machines_updated){
-					providerID:="metal3://metal3/"+Metal3MachineToBmhName(m3machine)+"/"+m3machine.GetName()
+				if m3machine.GetName() != metal3Machines_updated {
+					providerID := "metal3://metal3/" + Metal3MachineToBmhName(m3machine) + "/" + m3machine.GetName()
 					machine, _ := Metal3MachineToMachineName(m3machine)
-					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
-					resp, err :=http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName="+machine+"&providerID="+providerID)
-				Logf("resp : %v err: %v", resp, err)
+					Logf("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName=" + machine + "&providerID=" + providerID)
+					resp, err := http.Get("http://172.22.0.2:3333/updateNode?resource=metal3/test1&nodeName=" + machine + "&providerID=" + providerID)
+					Logf("resp : %v err: %v", resp, err)
 				}
-				
+
 			}
 		},
 		WaitForClusterIntervals:      e2eConfig.GetIntervals(specName, "wait-cluster"),
