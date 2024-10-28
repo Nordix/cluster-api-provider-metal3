@@ -62,6 +62,16 @@ if [[ ${GINKGO_FOCUS:-} == "clusterctl-upgrade" ]]; then
   export NUM_NODES="5"
 fi
 
+# Scalability test environment vars and config
+if [[ ${GINKGO_FOCUS:-} == "scalability" ]]; then
+  export NUM_NODES=${NUM_NODES:-"10"}
+  export BMH_BATCH_SIZE=${BMH_BATCH_SIZE:-"2"}
+  export CONTROL_PLANE_MACHINE_COUNT=${CONTROL_PLANE_MACHINE_COUNT:-"1"}
+  #TODO MD is disabled to test with capi reuse the issue is in the clusterclass template
+  export WORKER_MACHINE_COUNT=${WORKER_MACHINE_COUNT:-"0"}
+  export KUBERNETES_VERSION_UPGRADE_FROM=${FROM_K8S_VERSION}
+fi
+
 # Integration test environment vars and config
 if [[ ${GINKGO_FOCUS:-} == "integration" || ${GINKGO_FOCUS:-} == "basic" ]]; then
   export NUM_NODES=${NUM_NODES:-"2"}
