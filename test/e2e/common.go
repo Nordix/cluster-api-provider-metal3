@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	metal3api "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	bmov1alpha1 "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	infrav1 "github.com/metal3-io/cluster-api-provider-metal3/api/v1beta1"
 	ipamv1 "github.com/metal3-io/ip-address-manager/api/v1alpha1"
@@ -1061,3 +1062,53 @@ func CreateTargetCluster(ctx context.Context, inputGetter func() CreateTargetClu
 	}, input.E2EConfig.GetIntervals(input.SpecName, "wait-all-pod-to-be-running-on-target-cluster")...)
 	return targetCluster, &result
 }
+
+func CreateSecret(ctx context.Context, client client.Client, secretNamespace, secretName string, data map[string]string) {
+	secret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: secretNamespace,
+		},
+		StringData: data,
+	}
+
+	Expect(client.Create(ctx, &secret)).NotTo(HaveOccurred(), fmt.Sprintf("Failed to create secret '%s/%s'", secretNamespace, secretName))
+}
+
+type WaitForBmhInProvisioningStateInput struct {
+	Client          client.Client
+	Bmh             metal3api.BareMetalHost
+	State           metal3api.ProvisioningState
+	UndesiredStates []metal3api.ProvisioningState
+}
+
+func WaitForBmhInProvisioningState(ctx context.Context, input WaitForBmhInProvisioningStateInput, intervals ...interface{}) {
+	Eventually(func(g Gomega) {
+		bmh := metal3api.BareMetalHost{}
+		key := types.NamespacedName{Namespace: input.Bmh.Namespace, Name: input.Bmh.Name}
+		g.Expect(input.Client.Get(ctx, key, &bmh)).To(Succeed())
+
+		currentStatus := bmh.Status.Provisioning.State
+
+		// Check if the current state matches any of the undesired states
+		if isUndesiredState(currentStatus, input.UndesiredStates) {
+			StopTrying(fmt.Sprintf("BMH is in an unexpected state: %s", currentStatus)).Now()
+		}
+
+		g.Expect(currentStatus).To(Equal(input.State))
+	}, intervals...).Should(Succeed())
+}
+
+func isUndesiredState(currentState metal3api.ProvisioningState, undesiredStates []metal3api.ProvisioningState) bool {
+	if undesiredStates == nil {
+		return false
+	}
+
+	for _, state := range undesiredStates {
+		if (state == "" && currentState == "") || currentState == state {
+			return true
+		}
+	}
+	return false
+}
+
