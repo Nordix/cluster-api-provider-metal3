@@ -205,6 +205,14 @@ func preInitFunc(clusterProxy framework.ClusterProxy, bmoRelease string, ironicR
 				Deployment: deployment,
 			}, e2eConfig.GetIntervals(specName, "wait-deployment")...)
 		}
+		// Create an issuer and certificate to ensure that cert-manager is ready.
+		certManagerTest, err := os.ReadFile("data/cert-manager-test.yaml")
+		Expect(err).ToNot(HaveOccurred(), "Unable to read cert-manager test YAML file")
+		Eventually(func() error {
+			return clusterProxy.CreateOrUpdate(ctx, certManagerTest)
+		}, e2eConfig.GetIntervals(specName, "wait-deployment")...).Should(Succeed())
+		// Delete test namespace
+		Expect(clusterProxy.GetClientSet().CoreV1().Namespaces().Delete(ctx, "test", metav1.DeleteOptions{})).To(Succeed())
 	}
 
 	By("Fetch manifest for bootstrap cluster")
