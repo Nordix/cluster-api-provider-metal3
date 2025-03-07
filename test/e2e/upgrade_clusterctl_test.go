@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,6 +15,7 @@ import (
 	"sigs.k8s.io/cluster-api/cmd/clusterctl/client/config"
 	capi_e2e "sigs.k8s.io/cluster-api/test/e2e"
 	framework "sigs.k8s.io/cluster-api/test/framework"
+	"sigs.k8s.io/cluster-api/test/framework/clusterctl"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -76,6 +78,9 @@ var _ = Describe("When testing cluster upgrade from releases (v1.9=>current) [cl
 			PreUpgrade: func(clusterProxy framework.ClusterProxy) {
 				preUpgrade(clusterProxy, bmoToRelease, ironicToRelease)
 			},
+			PostUpgrade: func(clusterProxy framework.ClusterProxy, _ string, _ string) {
+				postUpgrade(ctx, clusterProxy)
+			},
 			PreCleanupManagementCluster: func(clusterProxy framework.ClusterProxy) {
 				preCleanupManagementCluster(clusterProxy, ironicToRelease)
 			},
@@ -130,6 +135,9 @@ var _ = Describe("When testing cluster upgrade from releases (v1.8=>current) [cl
 			PostNamespaceCreated: postNamespaceCreated,
 			PreUpgrade: func(clusterProxy framework.ClusterProxy) {
 				preUpgrade(clusterProxy, bmoToRelease, ironicToRelease)
+			},
+			PostUpgrade: func(clusterProxy framework.ClusterProxy, _ string, _ string) {
+				postUpgrade(ctx, clusterProxy)
 			},
 			PreCleanupManagementCluster: func(clusterProxy framework.ClusterProxy) {
 				preCleanupManagementCluster(clusterProxy, ironicToRelease)
@@ -348,6 +356,20 @@ func preUpgrade(clusterProxy framework.ClusterProxy, bmoUpgradeToRelease string,
 		WaitIntervals:       e2eConfig.GetIntervals("default", "wait-deployment"),
 	})
 	Expect(err).NotTo(HaveOccurred())
+}
+
+// postUpgrade hook is for installing the new Metal3 IPAM provider
+// when upgrading from CAPM3 bundled IPAM.
+func postUpgrade(ctx context.Context, clusterProxy framework.ClusterProxy) {
+	By("Installing Metal3 IPAM provider")
+	ipamDeployLogFolder := filepath.Join(os.TempDir(), "target_cluster_logs", "ipam-deploy-logs", clusterProxy.GetName())
+	input := clusterctl.InitInput{
+		ClusterctlConfigPath: clusterctlConfigPath,
+		KubeconfigPath:       clusterProxy.GetKubeconfigPath(),
+		LogFolder:            ipamDeployLogFolder,
+		IPAMProviders:        []string{"metal3"},
+	}
+	clusterctl.Init(ctx, input)
 }
 
 // preCleanupManagementCluster hook should be called from ClusterctlUpgradeSpec before cleaning the target management cluster
