@@ -104,7 +104,7 @@ var _ = Describe("Testing features in target cluster", Label("pivoting", "featur
 					Namespace:             namespace,
 				}
 			})
-			managementCluster := targetCluster
+
 			pivoting(ctx, func() PivotingInput {
 				return PivotingInput{
 					E2EConfig:             e2eConfig,
@@ -120,20 +120,19 @@ var _ = Describe("Testing features in target cluster", Label("pivoting", "featur
 
 			certRotation(ctx, func() CertRotationInput {
 				return CertRotationInput{
-					E2EConfig:         e2eConfig,
-					ManagementCluster: managementCluster,
-					SpecName:          specName,
+					E2EConfig:     e2eConfig,
+					TargetCluster: targetCluster,
+					SpecName:      specName,
 				}
 			})
 
 			nodeReuse(ctx, func() NodeReuseInput {
 				return NodeReuseInput{
-					E2EConfig:         e2eConfig,
-					ManagementCluster: managementCluster,
-					TargetCluster:     targetCluster,
-					SpecName:          specName,
-					ClusterName:       clusterName,
-					Namespace:         namespace,
+					E2EConfig:     e2eConfig,
+					TargetCluster: targetCluster,
+					SpecName:      specName,
+					ClusterName:   clusterName,
+					Namespace:     namespace,
 				}
 			})
 		})
