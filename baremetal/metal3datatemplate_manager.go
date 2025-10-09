@@ -354,8 +354,9 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 	if ok {
 		// Try to get the Metal3Data. if it succeeds, delete it
 		tmpM3Data := &infrav1.Metal3Data{}
+		dataName := m.DataTemplate.Name + "-" + strconv.Itoa(dataClaimIndex)
 		key := client.ObjectKey{
-			Name:      m.DataTemplate.Name + "-" + strconv.Itoa(dataClaimIndex),
+			Name:      dataName,
 			Namespace: m.DataTemplate.Namespace,
 		}
 		err := m.client.Get(ctx, key, tmpM3Data)
@@ -364,6 +365,7 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 			return indexes, err
 		} else if err == nil {
 			// Remove the finalizer
+			m.Log.Info("NORDIX removing finalizer from associated Metal3Data", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 			controllerutil.RemoveFinalizer(tmpM3Data, infrav1.DataClaimFinalizer)
 			err = updateObject(ctx, m.client, tmpM3Data)
 			if err != nil && !apierrors.IsNotFound(err) {
@@ -371,12 +373,15 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 				return indexes, err
 			}
 			// Delete the Metal3Data
+			m.Log.Info("NORDIX deleting associated Metal3Data", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 			err = deleteObject(ctx, m.client, tmpM3Data)
 			if err != nil && !apierrors.IsNotFound(err) {
 				dataClaim.Status.ErrorMessage = ptr.To("Failed to delete associated Metal3Data object")
 				return indexes, err
 			}
 			m.Log.Info("Deleted Metal3Data", "Metal3Data", tmpM3Data.Name)
+		} else {
+			m.Log.Info("NORDIX ERROR unknow error retrieving the Metal3Data", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 		}
 	} else {
 		m.Log.Info("NORDIX ERROR index of the claim was not found", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
