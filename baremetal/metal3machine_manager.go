@@ -1770,9 +1770,11 @@ func (m *MachineManager) DissociateM3Metadata(ctx context.Context) error {
 		if !(errors.As(err, &reconcileError) && reconcileError.IsTransient()) {
 			return err
 		}
+		m.Log.Info("NORDIX ERROR related claim can't be retrieved because of unknown error", "Metal3Machine", m.Metal3Machine.Name)
 		return nil
 	}
 	if metal3DataClaim == nil {
+		m.Log.Info("NORDIX WARNING related claim is NIL", "Metal3Machine", m.Metal3Machine.Name)
 		return nil
 	}
 
@@ -1782,7 +1784,8 @@ func (m *MachineManager) DissociateM3Metadata(ctx context.Context) error {
 		m.Log.Info("Unable to remove finalizers from Metal3DataClaim", "Metal3DataClaim", metal3DataClaim.Name)
 		return err
 	}
-
+	m.Log.Info("NORDIX removed finalizers successfully", "Metal3DataClaim", metal3DataClaim.Name)
+	m.Log.Info("NORDIX deleting the claim", "Metal3DataClaim", metal3DataClaim.Name)
 	return deleteObject(ctx, m.client, metal3DataClaim)
 }
 

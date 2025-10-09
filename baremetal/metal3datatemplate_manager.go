@@ -179,8 +179,9 @@ func (m *DataTemplateManager) UpdateDatas(ctx context.Context) (bool, bool, erro
 				continue
 			}
 		}
-
+		m.Log.Info("NORDIX initiate updating data of calim", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
 		indexes, err = m.updateData(ctx, &dataClaim, indexes)
+		m.Log.Info("NORDIX success updating data of calim", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
 		if err != nil {
 			return false, false, err
 		}
@@ -212,6 +213,7 @@ func (m *DataTemplateManager) updateData(ctx context.Context,
 			return indexes, err
 		}
 	} else {
+		m.Log.Info("NORDIX deleting data of calim", "Metal3DataClaim", dataClaim.Name)
 		indexes, err = m.deleteData(ctx, dataClaim, indexes)
 		if err != nil {
 			return indexes, err
@@ -348,6 +350,7 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 	m.Log.Info("Deleting Metal3DataClaim", "Metal3DataClaim", dataClaim.Name)
 
 	dataClaimIndex, ok := m.DataTemplate.Status.Indexes[dataClaim.Name]
+	m.Log.Info("NORDIX Index value retrieved for the claim", "index", dataClaimIndex, "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
 	if ok {
 		// Try to get the Metal3Data. if it succeeds, delete it
 		tmpM3Data := &infrav1.Metal3Data{}
@@ -375,6 +378,8 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 			}
 			m.Log.Info("Deleted Metal3Data", "Metal3Data", tmpM3Data.Name)
 		}
+	} else {
+		m.Log.Info("NORDIX ERROR index of the claim was not found", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
 	}
 
 	dataClaim.Status.RenderedData = nil
