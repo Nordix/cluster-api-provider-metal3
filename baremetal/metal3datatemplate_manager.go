@@ -354,16 +354,44 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 	if ok {
 		// Try to get the Metal3Data. if it succeeds, delete it
 		tmpM3Data := &infrav1.Metal3Data{}
+		m3DataFound := false
 		dataName := m.DataTemplate.Name + "-" + strconv.Itoa(dataClaimIndex)
 		key := client.ObjectKey{
 			Name:      dataName,
 			Namespace: m.DataTemplate.Namespace,
 		}
 		err := m.client.Get(ctx, key, tmpM3Data)
-		if err != nil && !apierrors.IsNotFound(err) {
-			dataClaim.Status.ErrorMessage = ptr.To("Failed to get associated Metal3Data object")
-			return indexes, err
+		if err != nil && apierrors.IsNotFound(err) {
+			m.Log.Info("NORDIX WARNING Metal3Data not found based on template name and claim index", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 		} else if err == nil {
+			m.Log.Info("NORDIX Metal3Data found based on template name and claim index", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
+			m3DataFound = true
+		}
+
+		if !m3DataFound {
+			m.Log.Info("NORDIX WARNING Attempting to retrieve Metal3Data based on Metal3DataClaim render information")
+			if dataClaim != nil && dataClaim.Status.RenderedData != nil {
+				m.Log.Info("NORDIX WARNING Attempting to access Metal3DataClaimn render information", "Metal3DataClaim", dataClaim.Name)
+				dataName = dataClaim.Status.RenderedData.Name
+				key = client.ObjectKey{
+					Name:      dataName,
+					Namespace: m.DataTemplate.Namespace,
+				}
+				err = m.client.Get(ctx, key, tmpM3Data)
+				if err != nil && !apierrors.IsNotFound(err) {
+					dataClaim.Status.ErrorMessage = ptr.To("Failed the retrieval process of Metal3Data becuse of an error other than simply not finding the resource")
+					m.Log.Info("NORDIX WARNING Failed to get Metal3Data object for reason other than not finding it based on claim render info", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
+					return indexes, err
+				} else if err != nil && apierrors.IsNotFound(err) {
+					m.Log.Info("NORDIX WARNING Failed to get Metal3Data not found based on claim render info", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
+				} else if err == nil {
+					m.Log.Info("NORDIX Metal3Data found based on claim render info", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
+					m3DataFound = true
+				}
+			}
+		}
+
+		if m3DataFound {
 			// Remove the finalizer
 			m.Log.Info("NORDIX removing finalizer from associated Metal3Data", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 			controllerutil.RemoveFinalizer(tmpM3Data, infrav1.DataClaimFinalizer)
@@ -380,8 +408,6 @@ func (m *DataTemplateManager) deleteData(ctx context.Context,
 				return indexes, err
 			}
 			m.Log.Info("Deleted Metal3Data", "Metal3Data", tmpM3Data.Name)
-		} else {
-			m.Log.Info("NORDIX ERROR unknow error retrieving the Metal3Data", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name, "Metal3Data", dataName)
 		}
 	} else {
 		m.Log.Info("NORDIX ERROR index of the claim was not found", "Metal3DataClaim", dataClaim.Name, "Metal3DataTemplate", m.DataTemplate.Name)
