@@ -529,7 +529,11 @@ func (m *MachineManager) Delete(ctx context.Context) error {
 		onlineStatus := host.Spec.Online
 
 		if host.Spec.AutomatedCleaningMode == "disabled" {
-			host.Spec.Online = false
+			if host.Spec.DisablePowerOff {
+				host.Spec.Online = true
+			} else {
+				host.Spec.Online = false
+			}
 		} else if Capm3FastTrack == "true" {
 			host.Spec.Online = true
 		} else if Capm3FastTrack == "false" {
