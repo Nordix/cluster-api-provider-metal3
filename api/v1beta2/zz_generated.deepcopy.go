@@ -25,7 +25,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/cluster-api/api/core/v1beta1"
+	corev1beta2 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	"sigs.k8s.io/cluster-api/errors"
 )
 
@@ -64,8 +64,8 @@ func (in FailureDomains) DeepCopyInto(out *FailureDomains) {
 	{
 		in := &in
 		*out = make(FailureDomains, len(*in))
-		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }
@@ -465,8 +465,8 @@ func (in *Metal3ClusterSpec) DeepCopyInto(out *Metal3ClusterSpec) {
 	if in.FailureDomains != nil {
 		in, out := &in.FailureDomains, &out.FailureDomains
 		*out = make(FailureDomains, len(*in))
-		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }
@@ -500,7 +500,7 @@ func (in *Metal3ClusterStatus) DeepCopyInto(out *Metal3ClusterStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make(v1beta1.Conditions, len(*in))
+		*out = make(corev1beta2.Conditions, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
@@ -513,8 +513,8 @@ func (in *Metal3ClusterStatus) DeepCopyInto(out *Metal3ClusterStatus) {
 	if in.FailureDomains != nil {
 		in, out := &in.FailureDomains, &out.FailureDomains
 		*out = make(FailureDomains, len(*in))
-		for key, val := range *in {
-			(*out)[key] = *val.DeepCopy()
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
 }
@@ -1087,7 +1087,7 @@ func (in *Metal3MachineStatus) DeepCopyInto(out *Metal3MachineStatus) {
 	}
 	if in.Addresses != nil {
 		in, out := &in.Addresses, &out.Addresses
-		*out = make(v1beta1.MachineAddresses, len(*in))
+		*out = make(corev1beta2.MachineAddresses, len(*in))
 		copy(*out, *in)
 	}
 	if in.UserData != nil {
@@ -1112,7 +1112,7 @@ func (in *Metal3MachineStatus) DeepCopyInto(out *Metal3MachineStatus) {
 	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make(v1beta1.Conditions, len(*in))
+		*out = make(corev1beta2.Conditions, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

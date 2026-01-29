@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 )
 
@@ -32,18 +32,18 @@ const (
 
 // Metal3Cluster Conditions and Reasons.
 const (
-	Metal3ClusterReadyV1Beta2Condition     = clusterv1beta1.ReadyV1Beta2Condition
-	Metal3ClusterReadyV1Beta2Reason        = clusterv1beta1.ReadyV1Beta2Reason
-	Metal3ClusterNotReadyV1Beta2Reason     = clusterv1beta1.NotReadyV1Beta2Reason
-	Metal3ClusterReadyUnknownV1Beta2Reason = clusterv1beta1.ReadyUnknownV1Beta2Reason
+	Metal3ClusterReadyV1Beta2Condition     = clusterv1.ReadyCondition
+	Metal3ClusterReadyV1Beta2Reason        = clusterv1.ReadyReason
+	Metal3ClusterNotReadyV1Beta2Reason     = clusterv1.NotReadyReason
+	Metal3ClusterReadyUnknownV1Beta2Reason = clusterv1.ReadyUnknownReason
 )
 
 const (
 	BaremetalInfrastructureReadyV1Beta2Condition = "BaremetalInfrastructureReady"
-	BaremetalInfrastructureReadyV1Beta2Reason    = clusterv1beta1.ReadyV1Beta2Reason
+	BaremetalInfrastructureReadyV1Beta2Reason    = clusterv1.ReadyReason
 	ControlPlaneEndpointFailedV1Beta2Reason      = "ControlPlaneEndpointFailed"
 	FailedToGetOwnerClusterReasonV1Beta2Reason   = "FailedToGetOwnerCluster"
-	Metal3ClusterDeletingV1Beta2Reason           = clusterv1beta1.DeletingReason
+	Metal3ClusterDeletingV1Beta2Reason           = clusterv1.DeletingReason
 )
 
 // Metal3ClusterSpec defines the desired state of Metal3Cluster.
@@ -74,7 +74,7 @@ type Metal3ClusterSpec struct {
 }
 
 // FailureDomains is a slice of FailureDomainSpecs.
-type FailureDomains clusterv1beta1.FailureDomains
+type FailureDomains []clusterv1.FailureDomain
 
 // IsValid returns an error if the object is not valid, otherwise nil. The
 // string representation of the error is suitable for human consumption.
@@ -119,7 +119,7 @@ type Metal3ClusterStatus struct {
 	Ready bool `json:"ready"`
 	// Conditions defines current service state of the Metal3Cluster.
 	// +optional
-	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 	// v1beta2 groups all the fields that will be added or modified in Metal3Cluster's status with the V1Beta2 version.
 	// +optional
 	V1Beta2 *Metal3ClusterV1Beta2Status `json:"v1beta2,omitempty"`
@@ -173,12 +173,12 @@ type Metal3ClusterList struct {
 }
 
 // GetConditions returns the list of conditions for an Metal3Cluster API object.
-func (c *Metal3Cluster) GetConditions() clusterv1beta1.Conditions {
+func (c *Metal3Cluster) GetConditions() clusterv1.Conditions {
 	return c.Status.Conditions
 }
 
 // SetConditions will set the given conditions on an Metal3Cluster object.
-func (c *Metal3Cluster) SetConditions(conditions clusterv1beta1.Conditions) {
+func (c *Metal3Cluster) SetConditions(conditions clusterv1.Conditions) {
 	c.Status.Conditions = conditions
 }
 

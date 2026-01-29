@@ -19,7 +19,7 @@ package v1beta2
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clusterv1beta1 "sigs.k8s.io/cluster-api/api/core/v1beta1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 )
 
@@ -37,17 +37,17 @@ const (
 const (
 	// Metal3MachineReadyV1Beta2Condition is true if the Metal3Machine's deletionTimestamp is not set, Metal3Machine's
 	// BareMetalHostProvisioned is true.
-	Metal3MachineReadyV1Beta2Condition = clusterv1beta1.ReadyV1Beta2Condition
+	Metal3MachineReadyV1Beta2Condition = clusterv1.ReadyCondition
 
 	// Metal3MachineReadyV1Beta2Reason surfaces when the Metal3Machine readiness criteria is met.
-	Metal3MachineReadyV1Beta2Reason = clusterv1beta1.ReadyV1Beta2Reason
+	Metal3MachineReadyV1Beta2Reason = clusterv1.ReadyReason
 
 	// Metal3MachineNotReadyV1Beta2Reason surfaces when the Metal3Machine readiness criteria is not met.
-	Metal3MachineNotReadyV1Beta2Reason = clusterv1beta1.NotReadyV1Beta2Reason
+	Metal3MachineNotReadyV1Beta2Reason = clusterv1.NotReadyReason
 
 	// Metal3MachineReadyUnknownV1Beta2Reason surfaces when at least one Metal3Machine readiness criteria is unknown
 	// and no Metal3Machine readiness criteria is not met.
-	Metal3MachineReadyUnknownV1Beta2Reason = clusterv1beta1.ReadyUnknownV1Beta2Reason
+	Metal3MachineReadyUnknownV1Beta2Reason = clusterv1.ReadyUnknownReason
 )
 
 // Metal3Machine condition and corresponding reasons that will be used in v1Beta2 API version.
@@ -63,10 +63,10 @@ const (
 
 	// WaitingForClusterInfrastructureReadyV1Beta2Reason used when waiting for cluster
 	// infrastructure to be ready before proceeding.
-	WaitingForClusterInfrastructureReadyV1Beta2Reason = clusterv1beta1.WaitingForClusterInfrastructureReadyV1Beta2Reason
+	WaitingForClusterInfrastructureReadyV1Beta2Reason = clusterv1.WaitingForClusterInfrastructureReadyReason
 
 	// WaitingForBootstrapDataV1Beta2Reason used when waiting for bootstrap to be ready before proceeding.
-	WaitingForBootstrapDataV1Beta2Reason = clusterv1beta1.WaitingForBootstrapDataV1Beta2Reason
+	WaitingForBootstrapDataV1Beta2Reason = clusterv1.WaitingForBootstrapDataReason
 
 	// WaitingForMetal3MachineOwnerRefV1Beta2Reason is used when Metal3Machine is waiting for OwnerReference to be
 	// set before proceeding.
@@ -105,7 +105,7 @@ const (
 	DisassociateM3MetaDataFailedV1Beta2Reason = "DisassociateM3MetaDataFailed"
 
 	// DeletingV1Beta2Reason (Severity=Info) documents a condition not in Status=True because the underlying object it is currently being deleted.
-	Metal3MachineDeletingV1Beta2Reason = clusterv1beta1.DeletingV1Beta2Reason
+	Metal3MachineDeletingV1Beta2Reason = clusterv1.DeletingReason
 
 	// Metal3MachineDeletingFailedV1Beta2Reason (Severity=Warning) documents a condition not in Status=True because the underlying object
 	// encountered problems during deletion. This is a warning because the reconciler will retry deletion.
@@ -213,7 +213,7 @@ type Metal3MachineStatus struct {
 	// Addresses is a list of addresses assigned to the machine.
 	// This field is copied from the infrastructure provider reference.
 	// +optional
-	Addresses clusterv1beta1.MachineAddresses `json:"addresses,omitempty"`
+	Addresses clusterv1.MachineAddresses `json:"addresses,omitempty"`
 
 	// Phase represents the current phase of machine actuation.
 	// E.g. Pending, Running, Terminating, Failed etc.
@@ -249,7 +249,7 @@ type Metal3MachineStatus struct {
 	NetworkData *corev1.SecretReference `json:"networkData,omitempty"`
 	// Conditions defines current service state of the Metal3Machine.
 	// +optional
-	Conditions clusterv1beta1.Conditions `json:"conditions,omitempty"`
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 
 	// v1beta2 groups all the fields that will be added or modified in Metal3Machine's status with the V1Beta2 version.
 	// +optional
@@ -302,12 +302,12 @@ type Metal3MachineList struct {
 }
 
 // GetConditions returns the list of conditions for an Metal3Machine API object.
-func (c *Metal3Machine) GetConditions() clusterv1beta1.Conditions {
+func (c *Metal3Machine) GetConditions() clusterv1.Conditions {
 	return c.Status.Conditions
 }
 
 // SetConditions will set the given conditions on an Metal3Machine object.
-func (c *Metal3Machine) SetConditions(conditions clusterv1beta1.Conditions) {
+func (c *Metal3Machine) SetConditions(conditions clusterv1.Conditions) {
 	c.Status.Conditions = conditions
 }
 

@@ -825,7 +825,9 @@ spec:
                   - address
                   - type
                   type: object
+                maxItems: 128
                 type: array
+                x-kubernetes-list-type: atomic
               conditions:
                 description: Conditions defines current service state of the Metal3Machine.
                 items:
