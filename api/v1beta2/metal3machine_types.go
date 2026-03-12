@@ -175,6 +175,9 @@ type Metal3MachineSpec struct {
 	AutomatedCleaningMode *string `json:"automatedCleaningMode,omitempty"`
 
 	// failureDomain is the failure domain unique identifier this machine should be attached to, as defined in Cluster API.
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=256
 	FailureDomain string `json:"failureDomain,omitempty"`
 }
 

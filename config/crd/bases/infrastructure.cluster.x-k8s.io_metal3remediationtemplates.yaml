@@ -165,11 +165,7 @@ spec:
                             type: string
                         type: object
                     type: object
-                required:
-                - spec
                 type: object
-            required:
-            - template
             type: object
           status:
             description: status defines the observed state of Metal3RemediationTemplate.
@@ -194,8 +190,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-            required:
-            - status
             type: object
         type: object
     served: true

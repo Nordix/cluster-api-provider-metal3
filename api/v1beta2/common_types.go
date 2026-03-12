@@ -63,32 +63,50 @@ type HostSelector struct {
 
 type HostSelectorRequirement struct {
 	// key is the label key that the selector applies to.
-	Key string `json:"key"`
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
+	Key string `json:"key,omitempty"`
 
 	// operator represents a key's relationship to a set of values.
-	Operator selection.Operator `json:"operator"`
+	// +required
+	Operator selection.Operator `json:"operator,omitempty"`
 
 	// values is an array of string of required values.
-	Values []string `json:"values"`
+	// +required
+	// +kubebuilder:validation:MaxItems=512
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:items:MaxLength=512
+	Values []string `json:"values,omitempty"`
 }
 
 // Image holds the details of an image to use during provisioning.
 type Image struct {
 	// url is a location of an image to deploy.
-	URL string `json:"url"`
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
+	URL string `json:"url,omitempty"`
 
 	// checksum is a md5sum, sha256sum or sha512sum value or a URL to retrieve one.
-	Checksum string `json:"checksum"`
+	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
+	Checksum string `json:"checksum,omitempty"`
 
 	// checksumType is the checksum algorithm for the image.
 	// e.g md5, sha256, sha512
 	// +kubebuilder:validation:Enum=md5;sha256;sha512
 	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
 	ChecksumType *string `json:"checksumType,omitempty"`
 
 	// diskFormat contains the image disk format.
 	// +kubebuilder:validation:Enum=raw;qcow2;vdi;vmdk;live-iso
 	// +optional
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
 	DiskFormat *string `json:"diskFormat,omitempty"`
 }
 
@@ -97,7 +115,10 @@ type CustomDeploy struct {
 	// method is the name of the deploy method.
 	// This name is specific to the deploy ramdisk used. If you don't have
 	// a custom deploy ramdisk, you shouldn't use CustomDeploy.
-	Method string `json:"method"`
+	// +required
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=512
+	Method string `json:"method,omitempty"`
 }
 
 // Validate performs validation on [Image], returning a list of field errors using the provided base path.

@@ -2887,7 +2887,7 @@ var _ = Describe("Metal3Data manager", func() {
 			links: infrav1.NetworkDataLink{
 				Vlans: []infrav1.NetworkDataLinkVlan{
 					{
-						VlanID: 2222,
+						VlanID: int32(2222),
 						Id:     "bond0",
 						MTU:    1500,
 						MACAddress: &infrav1.NetworkLinkEthernetMac{
@@ -2912,7 +2912,7 @@ var _ = Describe("Metal3Data manager", func() {
 			links: infrav1.NetworkDataLink{
 				Vlans: []infrav1.NetworkDataLinkVlan{
 					{
-						VlanID: 2222,
+						VlanID: int32(2222),
 						Id:     "bond0",
 						MTU:    1500,
 						MACAddress: &infrav1.NetworkLinkEthernetMac{
@@ -2978,7 +2978,7 @@ var _ = Describe("Metal3Data manager", func() {
 			links: infrav1.NetworkDataLink{
 				Vlans: []infrav1.NetworkDataLinkVlan{
 					{
-						VlanID:     100,
+						VlanID:     int32(100),
 						Id:         "vlan100", // use existing kernel interface name
 						MTU:        1500,
 						MACAddress: nil, // no MAC
@@ -3056,7 +3056,7 @@ var _ = Describe("Metal3Data manager", func() {
 			links: infrav1.NetworkDataLink{
 				Vlans: []infrav1.NetworkDataLinkVlan{
 					{
-						VlanID:   100,
+						VlanID:   int32(100),
 						Id:       "vlan100",
 						Name:     "vlan-storage", // custom vlan name for cloud-init rename
 						MTU:      9000,
@@ -3115,7 +3115,7 @@ var _ = Describe("Metal3Data manager", func() {
 				},
 				Vlans: []infrav1.NetworkDataLinkVlan{
 					{
-						VlanID:   200,
+						VlanID:   int32(200),
 						Id:       "vlan200",
 						Name:     "tenant-net", // custom name different from id
 						MTU:      1500,

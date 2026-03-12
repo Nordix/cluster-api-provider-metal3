@@ -24,6 +24,7 @@ import (
 // Metal3MachineTemplateSpec defines the desired state of Metal3MachineTemplate.
 type Metal3MachineTemplateSpec struct {
 	// template describes the data needed to create a Metal3Machine from a template
+	// +optional
 	Template Metal3MachineTemplateResource `json:"template"`
 
 	// nodeReuse is a flag that can be set to True to enable node reuse during upgrade.
@@ -44,9 +45,11 @@ type Metal3MachineTemplateSpec struct {
 type Metal3MachineTemplate struct {
 	metav1.TypeMeta `json:",inline"`
 	// metadata is the standard object's metadata.
+	// +optional
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// spec defines the desired state of Metal3MachineTemplate.
-	Spec Metal3MachineTemplateSpec `json:"spec,omitempty"`
+	// +optional
+	Spec Metal3MachineTemplateSpec `json:"spec,omitempty,omitzero"`
 }
 
 // +kubebuilder:object:root=true
@@ -69,5 +72,6 @@ type Metal3MachineTemplateResource struct {
 	// +optional
 	ObjectMeta clusterv1.ObjectMeta `json:"metadata,omitempty,omitzero"`
 	// spec is the specification of the desired behavior of the machine.
+	// +optional
 	Spec Metal3MachineSpec `json:"spec"`
 }

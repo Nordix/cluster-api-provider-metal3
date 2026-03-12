@@ -621,6 +621,8 @@ spec:
                       method is the name of the deploy method.
                       This name is specific to the deploy ramdisk used. If you don't have
                       a custom deploy ramdisk, you shouldn't use CustomDeploy.
+                    maxLength: 512
+                    minLength: 1
                     type: string
                 required:
                 - method
@@ -674,6 +676,8 @@ spec:
               failureDomain:
                 description: failureDomain is the failure domain unique identifier
                   this machine should be attached to, as defined in Cluster API.
+                maxLength: 256
+                minLength: 1
                 type: string
               hostSelector:
                 description: |-
@@ -689,6 +693,8 @@ spec:
                         key:
                           description: key is the label key that the selector applies
                             to.
+                          maxLength: 512
+                          minLength: 1
                           type: string
                         operator:
                           description: operator represents a key's relationship to
@@ -697,7 +703,10 @@ spec:
                         values:
                           description: values is an array of string of required values.
                           items:
+                            maxLength: 512
+                            minLength: 1
                             type: string
+                          maxItems: 512
                           type: array
                       required:
                       - key
@@ -718,6 +727,8 @@ spec:
                   checksum:
                     description: checksum is a md5sum, sha256sum or sha512sum value
                       or a URL to retrieve one.
+                    maxLength: 512
+                    minLength: 1
                     type: string
                   checksumType:
                     description: |-
@@ -727,6 +738,8 @@ spec:
                     - md5
                     - sha256
                     - sha512
+                    maxLength: 512
+                    minLength: 1
                     type: string
                   diskFormat:
                     description: diskFormat contains the image disk format.
@@ -736,13 +749,14 @@ spec:
                     - vdi
                     - vmdk
                     - live-iso
+                    maxLength: 512
+                    minLength: 1
                     type: string
                   url:
                     description: url is a location of an image to deploy.
+                    maxLength: 512
+                    minLength: 1
                     type: string
-                required:
-                - checksum
-                - url
                 type: object
               metaData:
                 description: |-
