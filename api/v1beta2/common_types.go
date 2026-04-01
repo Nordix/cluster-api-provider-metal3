@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	// unhealthyAnnotation is the annotation that sets unhealthy status of BMH.
-	UnhealthyAnnotation = "capi.metal3.io/unhealthy"
+	// UnhealthyAnnotation is the annotation that sets unhealthy status of BMH.
+	UnhealthyAnnotation = "capm3.metal3.io/unhealthy"
 
 	// liveISODiskFormat is the disk format for live-iso images.
 	LiveISODiskFormat = "live-iso"
