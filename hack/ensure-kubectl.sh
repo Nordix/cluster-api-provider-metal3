@@ -24,14 +24,20 @@ MINIMUM_KUBECTL_VERSION=${KUBERNETES_VERSION:-"v1.36.0"}
 # Ensure the kubectl tool exists and is a viable version, or installs it
 verify_kubectl_version()
 {
-    # If kubectl is not available on the path, get it
-    if ! [ -x "$(command -v kubectl)" ]; then
+    # Remove any broken kubectl binary in GOPATH/bin
+    if [[ -f "${GOPATH_BIN}/kubectl" ]] && ! "${GOPATH_BIN}/kubectl" version --client &>/dev/null; then
+        echo "Removing broken kubectl binary at ${GOPATH_BIN}/kubectl"
+        rm -f "${GOPATH_BIN}/kubectl"
+    fi
+
+    # If kubectl is not available on the path, or not a working binary, get it
+    if ! kubectl version --client &>/dev/null; then
         if [[ "${OSTYPE}" == "linux-gnu" ]]; then
             if ! [ -d "${GOPATH_BIN}" ]; then
                 mkdir -p "${GOPATH_BIN}"
             fi
-            echo 'kubectl not found, installing'
-            curl -sLo "${GOPATH_BIN}/kubectl" https://storage.googleapis.com/kubernetes-release/release/"${MINIMUM_KUBECTL_VERSION}"/bin/linux/amd64/kubectl
+            echo 'kubectl not found or not working, installing'
+            curl -sLo "${GOPATH_BIN}/kubectl" "https://dl.k8s.io/release/${MINIMUM_KUBECTL_VERSION}/bin/linux/amd64/kubectl"
             chmod +x "${GOPATH_BIN}/kubectl"
         else
             echo "Missing required binary in path: kubectl"
@@ -40,10 +46,18 @@ verify_kubectl_version()
     fi
 
     local kubectl_version
-    IFS=" " read -ra kubectl_version <<< "$(kubectl version --client --short 2>/dev/null || kubectl version --client 2>/dev/null)"
-    if [[ "${MINIMUM_KUBECTL_VERSION}" != $(echo -e "${MINIMUM_KUBECTL_VERSION}\n${kubectl_version[2]}" | sort -s -t. -k 1,1 -k 2,2n -k 3,3n | head -n1) ]]; then
+    kubectl_version="$(kubectl version --client -o yaml 2>/dev/null | grep -F gitVersion | awk '{print $2}')" || true
+    if [[ -z "${kubectl_version}" ]]; then
+        # Fallback: try parsing non-yaml output (e.g. "Client Version: v1.36.0")
+        kubectl_version="$(kubectl version --client 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')" || true
+    fi
+    if [[ -z "${kubectl_version}" ]]; then
+        echo "WARNING: Unable to determine kubectl version, skipping version check"
+        return 0
+    fi
+    if [[ "${MINIMUM_KUBECTL_VERSION}" != $(echo -e "${MINIMUM_KUBECTL_VERSION}\n${kubectl_version}" | sort -s -t. -k 1,1 -k 2,2n -k 3,3n | head -n1) ]]; then
         cat << EOF
-Detected kubectl version: ${kubectl_version[2]}.
+Detected kubectl version: ${kubectl_version}.
 Requires ${MINIMUM_KUBECTL_VERSION} or greater.
 Please install ${MINIMUM_KUBECTL_VERSION} or later.
 EOF

@@ -64,7 +64,6 @@ const (
 	other          vmState = "other"
 	artifactoryURL         = "https://artifactory.nordix.org/artifactory/metal3/images/k8s"
 	imagesURL              = "http://172.22.0.1/images"
-	ironicImageDir         = "/opt/metal3-dev-env/ironic/html/images"
 	osTypeCentos           = "centos"
 	osTypeUbuntu           = "ubuntu"
 	osTypeLeap             = "opensuse-leap"
@@ -76,6 +75,15 @@ const (
 	retryableOperationInterval = 3 * time.Second
 	retryableOperationTimeout  = 3 * time.Minute
 )
+
+var ironicImageDir = getIronicImageDir()
+
+func getIronicImageDir() string {
+	if dir := os.Getenv("IRONIC_DATA_DIR"); dir != "" {
+		return filepath.Join(dir, "html", "images")
+	}
+	return "/opt/metal3/ironic/html/images"
+}
 
 func Byf(format string, a ...any) {
 	By(fmt.Sprintf(format, a...))
@@ -141,22 +149,49 @@ func GetBoolVariable(e2eConfig *clusterctl.E2EConfig, varName string) bool {
 }
 
 // TODO change this function to handle multiple workload(target) clusters.
-func DumpSpecResourcesAndCleanup(ctx context.Context, specName string, bootstrapClusterProxy framework.ClusterProxy, targetClusterProxy framework.ClusterProxy, artifactFolder string, namespace string, intervalsGetter func(spec, key string) []any, clusterName, clusterctlLogFolder string, skipCleanup bool, clusterctlConfigPath string) {
+func DumpSpecResourcesAndCleanup(ctx context.Context,
+	specName string,
+	bootstrapClusterProxy framework.ClusterProxy,
+	targetClusterProxy framework.ClusterProxy,
+	artifactFolder string,
+	namespace string,
+	intervalsGetter func(spec, key string) []any,
+	clusterName string,
+	clusterctlLogFolder string,
+	skipCleanup bool,
+	clusterctlConfigPath string) {
 	Expect(os.RemoveAll(clusterctlLogFolder)).Should(Succeed())
-	clusterClient := bootstrapClusterProxy.GetClient()
+	bootstrapClusterClient := bootstrapClusterProxy.GetClient()
 
 	bootstrapClusterProxy.CollectWorkloadClusterLogs(ctx, namespace, clusterName, artifactFolder)
 
 	By("Fetch logs from target cluster")
-	err := FetchClusterLogs(targetClusterProxy, clusterLogCollectionBasePath)
+	if targetClusterProxy != nil {
+		err := FetchClusterLogs(targetClusterProxy, filepath.Join(artifactFolder, targetClusterProxy.GetName(), "logs"))
+		if err != nil {
+			Logf("Error: %v", err)
+		}
+		err = FetchManifests(targetClusterProxy, filepath.Join(artifactFolder, targetClusterProxy.GetName(), "manifests"))
+		if err != nil {
+			Logf("Error fetching manifests for target cluster: %v", err)
+		}
+	} else {
+		Logf("Skipping target cluster log collection: targetClusterProxy is nil")
+	}
+
+	err := FetchClusterLogs(bootstrapClusterProxy, filepath.Join(artifactFolder, bootstrapClusterProxy.GetName(), "logs"))
 	if err != nil {
 		Logf("Error: %v", err)
+	}
+	err = FetchManifests(bootstrapClusterProxy, filepath.Join(artifactFolder, bootstrapClusterProxy.GetName(), "manifests"))
+	if err != nil {
+		Logf("Error fetching manifests for target cluster: %v", err)
 	}
 	// Dumps all the resources in the spec namespace, then cleanups the cluster object and the spec namespace itself.
 	By(fmt.Sprintf("Dumping all the Cluster API resources in the %q namespace", namespace))
 	// Dump all Cluster API related resources to artifacts before deleting them.
 	framework.DumpAllResources(ctx, framework.DumpAllResourcesInput{
-		Lister:               clusterClient,
+		Lister:               bootstrapClusterClient,
 		Namespace:            namespace,
 		LogPath:              filepath.Join(artifactFolder, bootstrapClusterProxy.GetName(), "resources"),
 		KubeConfigPath:       bootstrapClusterProxy.GetKubeconfigPath(),
@@ -182,9 +217,9 @@ func DumpSpecResourcesAndCleanup(ctx context.Context, specName string, bootstrap
 			datas := infrav1.Metal3DataList{}
 			dataTemplates := infrav1.Metal3DataTemplateList{}
 			dataClaims := infrav1.Metal3DataClaimList{}
-			g.Expect(clusterClient.List(ctx, &datas, opts)).To(Succeed())
-			g.Expect(clusterClient.List(ctx, &dataTemplates, opts)).To(Succeed())
-			g.Expect(clusterClient.List(ctx, &dataClaims, opts)).To(Succeed())
+			g.Expect(bootstrapClusterClient.List(ctx, &datas, opts)).To(Succeed())
+			g.Expect(bootstrapClusterClient.List(ctx, &dataTemplates, opts)).To(Succeed())
+			g.Expect(bootstrapClusterClient.List(ctx, &dataClaims, opts)).To(Succeed())
 			for _, dataObject := range datas.Items {
 				By(fmt.Sprintf("Data named: %s is not delete", dataObject.Name))
 			}
@@ -646,13 +681,14 @@ func Metal3MachineToBmhName(m3machine infrav1.Metal3Machine) string {
 	return strings.Replace(m3machine.GetAnnotations()["metal3.io/BareMetalHost"], "metal3/", "", 1)
 }
 
-// Derives the name of a VM created by metal3-dev-env from the name of a BareMetalHost object.
+// BmhToVMName derives the name of a VM from the name of a BareMetalHost object.
+// With vbmctl, VM names match BMH names directly (e.g. node-0).
 func BmhToVMName(host bmov1alpha1.BareMetalHost) string {
-	return strings.ReplaceAll(host.Name, "-", "_")
+	return host.Name
 }
 
 func BmhNameToVMName(hostname string) string {
-	return strings.ReplaceAll(hostname, "-", "_")
+	return hostname
 }
 
 func MachineToVMName(ctx context.Context, cli client.Client, m *clusterv1.Machine) (string, error) {
@@ -1113,23 +1149,14 @@ func CreateTargetCluster(ctx context.Context, inputGetter func() CreateTargetClu
 }
 
 func ApplyBmh(ctx context.Context, e2eConfig *clusterctl.E2EConfig, clusterProxy framework.ClusterProxy, clusterNamespace string, specName string) {
-	workingDir := "/opt/metal3-dev-env/"
 	numNodes := int(*e2eConfig.MustGetInt32PtrVariable("NUM_NODES"))
-	// Apply secrets and bmhs for [node_0 and node_1] in the management cluster to host the target management cluster
-	for i := range numNodes {
-		resource, err := os.ReadFile(filepath.Join(workingDir, fmt.Sprintf("bmhs/node_%d.yaml", i)))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(CreateOrUpdateWithNamespace(ctx, clusterProxy, resource, clusterNamespace)).ShouldNot(HaveOccurred())
-	}
-	clusterClient := clusterProxy.GetClient()
-	ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
-	WaitForNumBmhInState(ctx, bmov1alpha1.StateAvailable, WaitForNumInput{
-		Client:    clusterClient,
-		Options:   []client.ListOption{client.InNamespace(clusterNamespace)},
-		Replicas:  numNodes,
-		Intervals: e2eConfig.GetIntervals(specName, "wait-bmh-available"),
-	})
-	ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
+
+	// Use the VM info from the bmcs config to generate BMHs programmatically.
+	Expect(vmInfos).ToNot(BeEmpty(), "vmInfos not populated; E2E_BMCS_CONFIG must be set and loaded before creating BMHs")
+	Expect(len(vmInfos)).To(BeNumerically(">=", numNodes), "Not enough VMs created for the requested number of nodes")
+
+	ApplyBMHs(ctx, clusterProxy, vmInfos[:numNodes], clusterNamespace)
+	WaitForBMHsAvailable(ctx, clusterProxy, clusterNamespace, numNodes, e2eConfig.GetIntervals(specName, "wait-bmh-available"))
 }
 
 // WaitForResourceVersionsToStabilize waits for the resource versions of the specified GVKs in the given namespace to stabilize.
@@ -1468,6 +1495,57 @@ func InstallIRSO(ctx context.Context, input InstallIRSOInput) error {
 	}, input.E2EConfig.GetIntervals("default", "wait-deployment")...).Should(Succeed())
 
 	return nil
+}
+
+// ConfigureProvisioningNetwork adds the provisioning IP with /24 netmask to the kind cluster node.
+// TODO(lentzi90): Implement support for this in the keepalived image we use.
+// This is a workaround for the fact that keepalived only adds a /32 address, which causes
+// dnsmasq to fail with "no address range available for DHCP request" because it cannot
+// find a matching subnet for the DHCP range.
+// See https://github.com/metal3-io/baremetal-operator/issues/2792
+func ConfigureProvisioningNetwork(ctx context.Context, clusterName string, provisioningIP string) {
+	containerName := clusterName + "-control-plane"
+	// Add the provisioning IP with /24 netmask to eth0
+	// This allows dnsmasq to see the DHCP range as part of the local subnet
+	ipWithCIDR := provisioningIP + "/24"
+
+	Logf("Configuring provisioning network: adding %s to %s", ipWithCIDR, containerName)
+
+	cmd := testexec.NewCommand(
+		testexec.WithCommand("docker"),
+		testexec.WithArgs("exec", containerName, "ip", "addr", "add", ipWithCIDR, "dev", "eth0"),
+	)
+
+	stdout, stderr, err := cmd.Run(ctx)
+	// Ignore "RTNETLINK answers: File exists" error - the address may already be configured
+	if err != nil && !strings.Contains(string(stderr), "File exists") {
+		Logf("Warning: failed to configure provisioning network: %v\nstdout: %s\nstderr: %s", err, string(stdout), string(stderr))
+	} else {
+		Logf("Provisioning network configured successfully")
+	}
+}
+
+// ConfigureExternalNetwork adds the external subnet IP with /24 netmask to the kind cluster node.
+// This allows CAPI controllers running in the kind cluster to reach the target cluster's
+// API server VIP (e.g. 192.168.111.249) via the veth pair connecting kind-bridge to the
+// external bridge.
+func ConfigureExternalNetwork(ctx context.Context, clusterName string, externalIP string) {
+	containerName := clusterName + "-control-plane"
+	ipWithCIDR := externalIP + "/24"
+
+	Logf("Configuring external network: adding %s to %s", ipWithCIDR, containerName)
+
+	cmd := testexec.NewCommand(
+		testexec.WithCommand("docker"),
+		testexec.WithArgs("exec", containerName, "ip", "addr", "add", ipWithCIDR, "dev", "eth0"),
+	)
+
+	stdout, stderr, err := cmd.Run(ctx)
+	if err != nil && !strings.Contains(string(stderr), "File exists") {
+		Logf("Warning: failed to configure external network: %v\nstdout: %s\nstderr: %s", err, string(stdout), string(stderr))
+	} else {
+		Logf("External network configured successfully")
+	}
 }
 
 // WaitForIronicReady waits until the given Ironic resource has Ready condition = True.

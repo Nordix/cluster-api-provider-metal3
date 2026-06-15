@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	bmov1alpha1 "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,7 +19,6 @@ import (
 )
 
 const (
-	workDir       = "/opt/metal3-dev-env/"
 	capiContract  = "v1beta2"
 	capm3Contract = "v1beta2"
 )
@@ -173,39 +171,18 @@ func postClusterctlUpgradeNamespaceCreated(clusterProxy framework.ClusterProxy, 
 	// Check which from which cluster creation this call is coming
 	// if isBootstrapProxy==true then this call when creating the management else we are creating the workload.
 	isBootstrapProxy := !strings.HasPrefix(clusterProxy.GetName(), "clusterctl-upgrade")
+
+	Expect(vmInfos).ToNot(BeEmpty(), "vmInfos not populated; E2E_BMCS_CONFIG must be set and loaded before creating BMHs")
+
 	if isBootstrapProxy {
 		managementClusterNamespace = clusterNamespace
-		// Apply secrets and bmhs for [node_0 and node_1] in the management cluster to host the target management cluster
-		for i := range 2 {
-			resource, err := os.ReadFile(filepath.Join(workDir, fmt.Sprintf("bmhs/node_%d.yaml", i)))
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(CreateOrUpdateWithNamespace(ctx, clusterProxy, resource, clusterNamespace)).ShouldNot(HaveOccurred())
-		}
-		clusterClient := clusterProxy.GetClient()
-		ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
-		WaitForNumBmhInState(ctx, bmov1alpha1.StateAvailable, WaitForNumInput{
-			Client:    clusterClient,
-			Options:   []client.ListOption{client.InNamespace(clusterNamespace)},
-			Replicas:  2,
-			Intervals: e2eConfig.GetIntervals(specName, "wait-bmh-available"),
-		})
-		ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
+		// Apply BMHs for [node-0 and node-1] in the management cluster to host the target management cluster
+		ApplyBMHs(ctx, clusterProxy, vmInfos[:2], clusterNamespace)
+		WaitForBMHsAvailable(ctx, clusterProxy, clusterNamespace, 2, e2eConfig.GetIntervals(specName, "wait-bmh-available"))
 	} else {
-		// Apply secrets and bmhs for [node_2, node_3 and node_4] in the management cluster to host workload cluster
-		for i := 2; i < 5; i++ {
-			resource, err := os.ReadFile(filepath.Join(workDir, fmt.Sprintf("bmhs/node_%d.yaml", i)))
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(CreateOrUpdateWithNamespace(ctx, clusterProxy, resource, clusterNamespace)).ShouldNot(HaveOccurred())
-		}
-		clusterClient := clusterProxy.GetClient()
-		ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
-		WaitForNumBmhInState(ctx, bmov1alpha1.StateAvailable, WaitForNumInput{
-			Client:    clusterClient,
-			Options:   []client.ListOption{client.InNamespace(clusterNamespace)},
-			Replicas:  3,
-			Intervals: e2eConfig.GetIntervals(specName, "wait-bmh-available"),
-		})
-		ListBareMetalHosts(ctx, clusterClient, client.InNamespace(clusterNamespace))
+		// Apply BMHs for [node-2, node-3 and node-4] in the management cluster to host workload cluster
+		ApplyBMHs(ctx, clusterProxy, vmInfos[2:5], clusterNamespace)
+		WaitForBMHsAvailable(ctx, clusterProxy, clusterNamespace, 3, e2eConfig.GetIntervals(specName, "wait-bmh-available"))
 	}
 	ListBareMetalHosts(ctx, bootstrapClusterProxy.GetClient(), client.InNamespace(clusterNamespace))
 }
@@ -300,15 +277,10 @@ func preInitFunc(clusterProxy framework.ClusterProxy, bmoRelease string, ironicR
 	installCertManager(clusterProxy)
 	// Remove ironic
 	Byf("Remove Ironic from cluster : %s", bootstrapClusterProxy.GetName())
-	bootstrapCluster := os.Getenv("BOOTSTRAP_CLUSTER")
-	ironicDeploymentType := IronicDeploymentTypeIrSO
-	if bootstrapCluster == Kind {
-		ironicDeploymentType = IronicDeploymentTypeLocal
-	}
+
 	removeIronic(ctx, func() RemoveIronicInput {
 		return RemoveIronicInput{
 			ClusterProxy:      bootstrapClusterProxy,
-			DeploymentType:    ironicDeploymentType,
 			Namespace:         e2eConfig.MustGetVariable(ironicNamespace),
 			E2EConfig:         e2eConfig,
 			IsDevEnvUninstall: true,
@@ -336,7 +308,7 @@ func preInitFunc(clusterProxy framework.ClusterProxy, bmoRelease string, ironicR
 
 	// install bmo
 	Byf("Install BMO version %s in the target management cluster: %s", bmoRelease, clusterProxy.GetName())
-	bmoDeployLogFolder := filepath.Join(clusterLogCollectionBasePath, clusterProxy.GetName(), "bmo-deploy-logs")
+	bmoDeployLogFolder := filepath.Join(artifactFolder, clusterProxy.GetName(), "bmo-deploy-logs")
 	bmoKustomizePath := "BMO_RELEASE_" + bmoRelease
 	initBMOKustomization := e2eConfig.MustGetVariable(bmoKustomizePath)
 	By(fmt.Sprintf("Installing BMO from kustomization %s on the upgrade cluster", initBMOKustomization))
@@ -403,7 +375,7 @@ func preUpgrade(clusterProxy framework.ClusterProxy, bmoUpgradeToRelease string,
 
 	// install bmo
 	Byf("Upgrade BMO with version %s in the target management cluster: %s", bmoTag, clusterProxy.GetName())
-	bmoDeployLogFolder := filepath.Join(clusterLogCollectionBasePath, clusterProxy.GetName(), "bmo-deploy-logs")
+	bmoDeployLogFolder := filepath.Join(artifactFolder, clusterProxy.GetName(), "bmo-deploy-logs")
 	bmoKustomizePath := "BMO_RELEASE_" + bmoTag
 	initBMOKustomization := e2eConfig.MustGetVariable(bmoKustomizePath)
 	By(fmt.Sprintf("Upgrading BMO from kustomization %s on the upgrade cluster", initBMOKustomization))
@@ -422,7 +394,7 @@ func preUpgrade(clusterProxy framework.ClusterProxy, bmoUpgradeToRelease string,
 // it moves back Ironic to the bootstrap cluster.
 func preCleanupManagementCluster(clusterProxy framework.ClusterProxy, ironicRelease string) {
 	By("Fetch logs from target cluster")
-	err := FetchClusterLogs(clusterProxy, clusterLogCollectionBasePath)
+	err := FetchClusterLogs(clusterProxy, filepath.Join(artifactFolder, clusterProxy.GetName(), "preCleanup-logs"))
 	if err != nil {
 		Logf("Error: %v", err)
 	}
@@ -437,45 +409,31 @@ func preCleanupManagementCluster(clusterProxy framework.ClusterProxy, ironicRele
 	// Reinstall ironic
 	reInstallIronic := func() {
 		By("Reinstate Ironic containers and BMH")
-		bootstrapCluster := os.Getenv("BOOTSTRAP_CLUSTER")
-		if bootstrapCluster == Kind {
-			By("Install Ironic in the source cluster as containers")
-			bmoPath := e2eConfig.MustGetVariable("BMOPATH")
-			ironicCommand := bmoPath + "/tools/run_local_ironic.sh"
-			//#nosec G204 -- We take the BMOPATH from a variable.
-			cmd := exec.CommandContext(context.Background(), "sh", "-c", "export CONTAINER_RUNTIME=docker; "+ironicCommand)
-			stdoutStderr, err := cmd.CombinedOutput()
-			Logf("Output: %s", stdoutStderr)
-			Expect(err).ToNot(HaveOccurred(), "Cannot run local ironic")
-		} else {
-			By("Install IRSO in the bootstrap cluster")
-			ironicKustomization := e2eConfig.MustGetVariable("IRSO_IRONIC_" + ironicRelease)
-			irsoOperatorVersion := "LATEST"
-			if ironicRelease < "32.0" {
-				irsoOperatorVersion = "0.8.0"
-			}
-			irsoKustomizePath := e2eConfig.MustGetVariable("IRSO_OPERATOR_" + irsoOperatorVersion)
-			irsoDeployLogFolder := filepath.Join(artifactFolder, bootstrapClusterProxy.GetName(), "ironic-deploy-logs-reinstall")
-			err := InstallIRSO(ctx, InstallIRSOInput{
-				E2EConfig:             e2eConfig,
-				ClusterProxy:          bootstrapClusterProxy,
-				IronicNamespace:       bmoIronicNamespace,
-				ClusterName:           bootstrapClusterProxy.GetName(),
-				IrsoOperatorKustomize: irsoKustomizePath,
-				IronicKustomize:       ironicKustomization,
-				LogPath:               irsoDeployLogFolder,
-			})
-			Expect(err).NotTo(HaveOccurred())
+
+		By("Install IRSO in the bootstrap cluster")
+		ironicKustomization := e2eConfig.MustGetVariable("IRSO_IRONIC_" + ironicRelease)
+		irsoOperatorVersion := "LATEST"
+		if ironicRelease < "32.0" {
+			irsoOperatorVersion = "0.8.0"
 		}
+		irsoKustomizePath := e2eConfig.MustGetVariable("IRSO_OPERATOR_" + irsoOperatorVersion)
+		irsoDeployLogFolder := filepath.Join(artifactFolder, bootstrapClusterProxy.GetName(), "ironic-deploy-logs-reinstall")
+		err := InstallIRSO(ctx, InstallIRSOInput{
+			E2EConfig:             e2eConfig,
+			ClusterProxy:          bootstrapClusterProxy,
+			IronicNamespace:       bmoIronicNamespace,
+			ClusterName:           bootstrapClusterProxy.GetName(),
+			IrsoOperatorKustomize: irsoKustomizePath,
+			IronicKustomize:       ironicKustomization,
+			LogPath:               irsoDeployLogFolder,
+		})
+		Expect(err).NotTo(HaveOccurred())
 	}
-	ironicDeploymentType := IronicDeploymentTypeIrSO
-	// TODO(dtantsur): support USE_IRSO in the target cluster
 	removeIronic(ctx, func() RemoveIronicInput {
 		return RemoveIronicInput{
-			ClusterProxy:   clusterProxy,
-			DeploymentType: ironicDeploymentType,
-			Namespace:      e2eConfig.MustGetVariable(ironicNamespace),
-			E2EConfig:      e2eConfig,
+			ClusterProxy: clusterProxy,
+			Namespace:    e2eConfig.MustGetVariable(ironicNamespace),
+			E2EConfig:    e2eConfig,
 		}
 	})
 	reInstallIronic()
