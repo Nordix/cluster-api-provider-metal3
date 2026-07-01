@@ -163,7 +163,7 @@ func (m *DataManager) createSecrets(ctx context.Context) error {
 	}
 	// Fetch the Metal3DataTemplate object to get the templates
 	m3dt, err := fetchM3DataTemplate(ctx, m.Data.Spec.Template, m.client,
-		m.Log, m.Data.Labels[clusterv1.ClusterNameLabel],
+		m.Log,
 	)
 	if err != nil {
 		return err
@@ -332,7 +332,7 @@ func (m *DataManager) ReleaseLeases(ctx context.Context) error {
 	}
 	// Fetch the Metal3DataTemplate object to get the templates
 	m3dt, err := fetchM3DataTemplate(ctx, m.Data.Spec.Template, m.client,
-		m.Log, m.Data.Labels[clusterv1.ClusterNameLabel],
+		m.Log,
 	)
 	if err != nil {
 		return err
@@ -756,7 +756,7 @@ func (m *DataManager) ensureM3IPClaim(ctx context.Context, poolRef infrav1.IPPoo
 	}
 
 	m3dt, err := fetchM3DataTemplate(ctx, m.Data.Spec.Template, m.client,
-		m.Log, m.Data.Labels[clusterv1.ClusterNameLabel],
+		m.Log,
 	)
 	if err != nil {
 		return reconciledClaim{m3Claim: ipClaim}, err

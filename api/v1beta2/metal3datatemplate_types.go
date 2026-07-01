@@ -888,8 +888,10 @@ type NetworkData struct {
 // Metal3DataTemplateSpec defines the desired state of Metal3DataTemplate.
 type Metal3DataTemplateSpec struct {
 	// clusterName is the name of the Cluster this object belongs to.
-	// +required
-	// +kubebuilder:validation:MinLength=1
+	//
+	// Deprecated: This field is deprecated and will be removed in a future release.
+	// It is no longer used by the controllers.
+	// +optional
 	// +kubebuilder:validation:MaxLength=512
 	ClusterName string `json:"clusterName,omitempty"`
 
