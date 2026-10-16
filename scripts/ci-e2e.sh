@@ -91,6 +91,15 @@ case "${GINKGO_FOCUS:-}" in
     export ENABLE_BMH_NAME_BASED_PREALLOCATION=true
   ;;
 
+  cp-upgrade-hang)
+    export ENABLE_BMH_NAME_BASED_PREALLOCATION="${ENABLE_BMH_NAME_BASED_PREALLOCATION:-true}"
+    export CONTROL_PLANE_MACHINE_COUNT="${CONTROL_PLANE_MACHINE_COUNT:-3}"
+    export WORKER_MACHINE_COUNT="${WORKER_MACHINE_COUNT:-0}"
+    export NUM_NODES="${NUM_NODES:-3}"
+    export GINKGO_TIMEOUT="${GINKGO_TIMEOUT:-24h}"
+    export SKIP_CLEANUP=true
+  ;;
+
   scalability)
     export CLUSTER_TOPOLOGY=true
   ;;

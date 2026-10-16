@@ -128,6 +128,12 @@ case "${GINKGO_FOCUS:-}" in
     export WORKER_MACHINE_COUNT=0
   ;;
 
+  cp-upgrade-hang)
+    export NUM_NODES=${NUM_NODES:-"3"}
+    export CONTROL_PLANE_MACHINE_COUNT=${CONTROL_PLANE_MACHINE_COUNT:-"3"}
+    export WORKER_MACHINE_COUNT=${WORKER_MACHINE_COUNT:-"0"}
+  ;;
+
   *)
     # GINKGO_FOCUS always defaults to "basic" (set in ci-e2e.sh) when unset, so
     # reaching here means an unrecognized focus value — fail fast instead of
